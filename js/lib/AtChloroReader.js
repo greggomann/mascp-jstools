@@ -99,13 +99,4 @@ MASCP.AtChloroReader.prototype.setupSequenceRenderer = function(sequenceRenderer
 
 MASCP.AtChloroReader.Result.prototype.render = function()
 {
-    if (this.getPeptides().length > 0) {
-        var a_container = jQuery('<div>MS/MS spectra <input class="group_toggle" type="checkbox"/>AtChloro</div>');
-        jQuery(this.reader.renderers).each(function(i){
-            this.createGroupCheckbox('atchloro_experimental',jQuery('input.group_toggle',a_container));
-        });
-        return a_container;
-    } else {
-        return null;
-    }
 };

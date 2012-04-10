@@ -509,12 +509,12 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
 
         var seq_els = [];
     
-        jQuery(seq_chars).each( function(i) {
+        seq_chars.forEach( function(aa,i) {
             var el = {};
             el._index = i;
             el._renderer = renderer;
             renderer._extendElement(el);
-            el.amino_acid = this;
+            el.amino_acid = aa;
             seq_els.push(el);
         });
 
