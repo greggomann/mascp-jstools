@@ -263,19 +263,19 @@ MASCP.PhosphatReader.prototype.setupSequenceRenderer = function(sequenceRenderer
         if (sequenceRenderer.createGroupController) {
             sequenceRenderer.createGroupController('phosphat_experimental','phosphat_peptides');
         }
-        jQuery(exp_peptides).each(function(i) {
+        exp_peptides.forEach(function(thing,i) {
             MASCP.registerLayer('phosphat_peptide_'+i, { 'fullname': 'PhosPhAt MS/MS', 'group':'phosphat_peptides', 'color' : '#000000', 'css' : '.active { background: #999999; color: #000000; } .tracks .active { background: #000000; fill: #000000; } .inactive { display: none; }' });
 
-            var start = this.shift();
-            var end = this.shift();
+            var start = thing.shift();
+            var end = thing.shift();
             var aa = sequenceRenderer.getAminoAcidsByPosition([start+1])[0];
             if (aa) {
                 aa.addBoxOverlay('phosphat_peptide_'+i,end,0.5);
                 icons.push(aa.addBoxOverlay('phosphat_experimental',end,0.5));
             }
-	        jQuery(sequenceRenderer.getAminoAcidsByPosition(this)).each(function() {
-	            this.addToLayer('phosphat_peptide_'+i);
-	            icons = icons.concat(this.addToLayer('phosphat_experimental'));
+	        sequenceRenderer.getAminoAcidsByPosition(thing).forEach(function(aa) {
+	            aa.addToLayer('phosphat_peptide_'+i);
+	            icons = icons.concat(aa.addToLayer('phosphat_experimental'));
 	        });
         });
 

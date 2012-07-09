@@ -1240,5 +1240,4 @@ MASCP.Service.Result.prototype = {
 
 
 MASCP.Service.Result.prototype.render = function() {
-//    return window.jQuery('<span>Result received for '+this.agi+'</span>');
 };
