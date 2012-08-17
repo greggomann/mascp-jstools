@@ -701,8 +701,9 @@ var mouseOver = function(setting, target, canvas, popupData) {
             bean.add(target.popup, 'mouseleave', function() {
                 canvas.withinPopup = false;
                 setTimeout( function() {
+                    var testTarget = document.getElementById('popup');
                     // Test for presence of popup and mouseover in the popup itself before removing
-                    if (target.popup && ! canvas.withinPopup === true) { canvas.parentNode.removeChild(target.popup); }
+                    if (typeof(testTarget) != 'undefined' && testTarget != null && ! canvas.withinPopup === true) { canvas.parentNode.removeChild(target.popup); }
                 }, 100); 
             });
         }, 500);
@@ -711,7 +712,8 @@ var mouseOver = function(setting, target, canvas, popupData) {
         if (target.timerID) { clearTimeout(target.timerID); }
         // Test for presence of a popup and a mouseover event in the popup itself before removing
         setTimeout( function() {
-            if (target.popup && ! canvas.withinPopup === true) { canvas.parentNode.removeChild(target.popup); }
+            var testTarget = document.getElementById('popup');
+            if (typeof(testTarget) != 'undefined' && testTarget != null && ! canvas.withinPopup === true) { canvas.parentNode.removeChild(target.popup); }
         }, 20);
     }
     return;
