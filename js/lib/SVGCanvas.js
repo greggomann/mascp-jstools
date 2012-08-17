@@ -437,6 +437,7 @@ var SVGCanvas = SVGCanvas || (function() {
             // Correct mouse cursor location
             var actualMouseX = mouseX - 7;
             var actualMouseY = mouseY - 130;
+            var popupWidth = 350;
 
             // Set popup location relative to mouse cursor
             if ( clientX >= window.innerWidth / 2 ) {
@@ -448,13 +449,15 @@ var SVGCanvas = SVGCanvas || (function() {
                 var polyOffsetX = 20;
             }
 
+            var xCoord = actualMouseX + offsetX;
+
             // Create container for popup
             var a_popup = document.createElementNS(svgns,'g');
             a_popup.setAttribute('id','popup');
             // Create main popup body
             var popup_rect = document.createElementNS(svgns, 'rect');
-            popup_rect.setAttribute('x', actualMouseX+offsetX);
-            popup_rect.setAttribute('width', 350);
+            popup_rect.setAttribute('x', xCoord);
+            popup_rect.setAttribute('width', popupWidth);
             popup_rect.setAttribute('rx', 10);
             popup_rect.setAttribute('ry', 10);
             popup_rect.setAttribute('stroke','#000000');
@@ -478,74 +481,50 @@ var SVGCanvas = SVGCanvas || (function() {
             popup_line.setAttribute('stroke-width',3);
             a_popup.appendChild(popup_line);
 
-            // Initialize line counter k. SVG doesn't support wordwrap, so we'll do this manually
-            var k = 0;
-            // Initialize title counter l
-            var m = 0;
+            // Initialize line counter k
+            var k = 1;
+            var lineHeight = 16;
+            var lineLength = 38;
+            
             // Fill popup content from popupData argument
             if (popupData) {
                 var textX = actualMouseX+offsetX+10;
-                lineHeight = 12;
-                lineLength = 38;
-                fontSize = '14px';
 
-                // Create main text container
-                var popupTextContainer = document.createElementNS(svgns, 'text');
-                popupTextContainer.setAttribute('x', textX);
-                popupTextContainer.setAttribute('font-family','monospace');
-                popupTextContainer.setAttribute('font-size',fontSize);
-                popupTextContainer.setAttribute('pointer-events','visiblePainted');
-                a_popup.appendChild(popupTextContainer);
+                // Create foreignObject element which will contain HTML within popup
+                var popupForeign = document.createElementNS(svgns, 'foreignObject');
+                popupForeign.setAttribute('x', xCoord+10);
+                popupForeign.setAttribute('width', popupWidth-20);
+                var popupBody = document.createElement('body');
+                popupBody.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+                popupBody.setAttribute('style', 'vertical-align: middle');
+                //popupForeign.appendChild(popupBody);
+                a_popup.appendChild(popupForeign);
 
                 // Iterate over data to be displayed
                 var firstTitle = true;
                 for (var popupKey in popupData) {
-                    m++;
                     var popupValue = new String(popupData[popupKey]);
-                    var newPopupElTitle = document.createElementNS(svgns, 'tspan');
-                    newPopupElTitle.textContent = popupKey + ': ';
-                    newPopupElTitle.setAttribute('x', textX);
-                    newPopupElTitle.setAttribute('dy', (firstTitle == true ? 0 : lineHeight+4));
-                    popupTextContainer.appendChild(newPopupElTitle);
-                    // titleLength is in characters; titleWidth is in pixels
-                    var titleLength = popupKey.length;
-                    var titleWidth = (titleLength * 8) + 16;
-                    var contentLength = lineLength - titleLength;
-                    // Split text into multiple lines
-                    var firstLine = true;
-                    var contentWritten = 0;
-                    var contentSize = popupValue.length;
-                    var lastIndex = 0;
-                    while (lastIndex < contentSize) {
-                        var newPopupElLine = document.createElementNS(svgns, 'tspan');
-                        newPopupElLine.setAttribute('x', textX+titleWidth);
-                        newPopupElLine.setAttribute('dy',(firstLine == true ? 0 : lineHeight));
-                        var thisLineLength = 0;
-                        if (lastIndex + contentLength >= contentSize) {
-                            thisLineLength = contentLength;
-                        } else {
-                            // Check for spaces and preserve whole words if present
-                            for (var l = contentLength; l > 0; l--) {
-                                var searchIndex = lastIndex + l;
-                                if (popupValue.substring(searchIndex, searchIndex+1) == ' ') { break; }
-                            }
-                            thisLineLength = (l == 0 ? contentLength : l);
-                        }
-                        newPopupElLine.textContent = popupValue.substring(lastIndex, lastIndex+thisLineLength).trim();
-                        lastIndex += thisLineLength;
-                        popupTextContainer.appendChild(newPopupElLine);
-                        if (firstLine == true) { firstLine = false; }
-                        k++;
+                    var popupDiv = document.createElement('div');
+                    popupDiv.setAttribute('style', 'font-family: monospace; font-size: 14px; border-width: 0; word-wrap: break-word');
+                    if (popupKey == 'Sequence') {
+                        k += Math.ceil(popupValue.length / lineLength);
+                        popupDiv.innerHTML = '<strong>' + popupKey + ':</strong><br>' + popupValue;
+                    } else {
+                        k += Math.ceil((popupValue.length+popupKey.length) / lineLength);
+                        popupDiv.innerHTML = '<strong>' + popupKey + ':</strong> ' + popupValue;
                     }
-                    if (firstTitle == true) { firstTitle = false; }
+                    popupForeign.appendChild(popupDiv);
                 }
             }
 
             // Set size and y-position based on amount of text displayed
-            var popupHeight = (k * 12) + ((m>=1 ? m-1 : 0) * 4) + 30;
+            var popupHeight = (k * lineHeight) + 20;
             popup_rect.setAttribute('height', popupHeight);
-            popupTextContainer.setAttribute('y', actualMouseY-(popupHeight/2)+20);
-            popup_rect.setAttribute('y', actualMouseY-(popupHeight/2));
+            popupForeign.setAttribute('height', popupHeight-20);
+            // popupTextContainer.setAttribute('y', actualMouseY-(popupHeight/2)+20);
+            var yCoord = actualMouseY - (popupHeight/2);
+            popup_rect.setAttribute('y', yCoord);
+            popupForeign.setAttribute('y', yCoord+10);
 
             this.parentNode.appendChild(a_popup);
             return a_popup;

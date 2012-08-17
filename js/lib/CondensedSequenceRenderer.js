@@ -702,7 +702,7 @@ var mouseOver = function(setting, target, canvas, popupData) {
                 canvas.withinPopup = false;
                 setTimeout( function() {
                     // Test for presence of popup and mouseover in the popup itself before removing
-                    if ('popup' in canvas.parentNode.childNodes && ! canvas.withinPopup === true) { canvas.parentNode.removeChild(target.popup); }
+                    if (target.popup && ! canvas.withinPopup === true) { canvas.parentNode.removeChild(target.popup); }
                 }, 100); 
             });
         }, 500);
@@ -711,7 +711,7 @@ var mouseOver = function(setting, target, canvas, popupData) {
         if (target.timerID) { clearTimeout(target.timerID); }
         // Test for presence of a popup and a mouseover event in the popup itself before removing
         setTimeout( function() {
-            if ('popup' in canvas.parentNode.childNodes && ! canvas.withinPopup === true) { canvas.parentNode.removeChild(target.popup); }
+            if (target.popup && ! canvas.withinPopup === true) { canvas.parentNode.removeChild(target.popup); }
         }, 20);
     }
     return;
