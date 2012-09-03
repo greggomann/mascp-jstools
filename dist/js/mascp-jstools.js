@@ -428,10 +428,11 @@ if (typeof module != 'undefined' && module.exports){
     var parser = require('jsdom').jsdom;
     
     var XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
-    XMLHttpRequest.prototype.__defineGetter__("responseXML", function() {
-        return parser((this.responseText || '').replace(/&/g,'&amp;'));
+    Object.defineProperty(XMLHttpRequest.prototype,"responseXML", {
+        get: function() { return parser((this.responseText || '').replace(/&/g,'&amp;')); },
+        set: function() {}
+
     });
-    XMLHttpRequest.prototype.__defineSetter__("responseXML",function() {});
     XMLHttpRequest.prototype.customUA = 'MASCP Gator crawler (+http://gator.masc-proteomics.org/)';
 } else {
     window.MASCP = MASCP;
@@ -5826,16 +5827,11 @@ MASCP.SequenceRenderer = (function() {
             }
         };
 
-        if (renderer.__defineSetter__) {    
-            renderer.__defineSetter__("trackOrder", accessors.setTrackOrder);
-            renderer.__defineGetter__("trackOrder", accessors.getTrackOrder);
-        }
-
         if (MASCP.IE) {
             renderer.setTrackOrder = accessors.setTrackOrder;
         }
 
-        if ((typeof Object.defineProperty == 'function') && MASCP.IE && ! MASCP.IE8 ) {
+        if ((typeof Object.defineProperty == 'function') && ! MASCP.IE8 ) {
             Object.defineProperty(renderer,"trackOrder", {
                 get : accessors.getTrackOrder,
                 set : accessors.setTrackOrder
@@ -9271,11 +9267,6 @@ MASCP.CondensedSequenceRenderer.Zoom = function(renderer) {
         }
     };
 
-    if (renderer.__defineSetter__) {    
-        renderer.__defineSetter__("zoom", accessors.setZoom);
-        renderer.__defineGetter__("zoom", accessors.getZoom);
-    }
-
     if (Object.defineProperty && ! MASCP.IE8) {
         Object.defineProperty(renderer,"zoom", {
             get : accessors.getZoom,
@@ -9315,15 +9306,6 @@ MASCP.CondensedSequenceRenderer.Zoom = function(renderer) {
             this.refresh();
         }
     };
-
-    if (clazz.prototype.__defineSetter__) {    
-        clazz.prototype.__defineSetter__("padding", accessors.setPadding);
-        clazz.prototype.__defineGetter__("padding", accessors.getPadding);
-        clazz.prototype.__defineSetter__("trackGap", accessors.setTrackGap);
-        clazz.prototype.__defineGetter__("trackGap", accessors.getTrackGap);
-    }
-
-
 
     if (Object.defineProperty && ! MASCP.IE8 ) {
         Object.defineProperty(clazz.prototype,"padding", {
@@ -11017,9 +10999,11 @@ var accessors = {
 
 
 
-if (GOMap.Diagram.prototype.__defineSetter__) {
-    GOMap.Diagram.prototype.__defineSetter__("zoom", accessors.setZoom);
-    GOMap.Diagram.prototype.__defineGetter__("zoom", accessors.getZoom);
+if (Object.defineProperty && ! MASCP.IE8) {
+    Object.defineProperty(GOMap.Diagram.prototype,"zoom", {
+        get : accessors.getZoom,
+        set : accessors.setZoom
+    });
 }
 
 })();

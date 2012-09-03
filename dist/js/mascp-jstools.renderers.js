@@ -275,16 +275,11 @@ MASCP.SequenceRenderer = (function() {
             }
         };
 
-        if (renderer.__defineSetter__) {    
-            renderer.__defineSetter__("trackOrder", accessors.setTrackOrder);
-            renderer.__defineGetter__("trackOrder", accessors.getTrackOrder);
-        }
-
         if (MASCP.IE) {
             renderer.setTrackOrder = accessors.setTrackOrder;
         }
 
-        if ((typeof Object.defineProperty == 'function') && MASCP.IE && ! MASCP.IE8 ) {
+        if ((typeof Object.defineProperty == 'function') && ! MASCP.IE8 ) {
             Object.defineProperty(renderer,"trackOrder", {
                 get : accessors.getTrackOrder,
                 set : accessors.setTrackOrder
@@ -3720,11 +3715,6 @@ MASCP.CondensedSequenceRenderer.Zoom = function(renderer) {
         }
     };
 
-    if (renderer.__defineSetter__) {    
-        renderer.__defineSetter__("zoom", accessors.setZoom);
-        renderer.__defineGetter__("zoom", accessors.getZoom);
-    }
-
     if (Object.defineProperty && ! MASCP.IE8) {
         Object.defineProperty(renderer,"zoom", {
             get : accessors.getZoom,
@@ -3764,15 +3754,6 @@ MASCP.CondensedSequenceRenderer.Zoom = function(renderer) {
             this.refresh();
         }
     };
-
-    if (clazz.prototype.__defineSetter__) {    
-        clazz.prototype.__defineSetter__("padding", accessors.setPadding);
-        clazz.prototype.__defineGetter__("padding", accessors.getPadding);
-        clazz.prototype.__defineSetter__("trackGap", accessors.setTrackGap);
-        clazz.prototype.__defineGetter__("trackGap", accessors.getTrackGap);
-    }
-
-
 
     if (Object.defineProperty && ! MASCP.IE8 ) {
         Object.defineProperty(clazz.prototype,"padding", {
