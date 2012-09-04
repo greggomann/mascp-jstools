@@ -1143,9 +1143,9 @@ MASCP.SequenceRenderer.prototype.bind = function(ev,func)
     jQuery(this).bind(ev,func);
 };
 
-MASCP.SequenceRenderer.prototype.trigger = function(ev)
+MASCP.SequenceRenderer.prototype.trigger = function(ev,args)
 {
-    jQuery(this).trigger(ev);
+    jQuery(this).trigger(ev,args);
 };
 
 var SVGCanvas = SVGCanvas || (function() {
