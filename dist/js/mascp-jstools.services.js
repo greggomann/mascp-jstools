@@ -2407,6 +2407,10 @@ MASCP.GoogledataReader.prototype.createReader = function(doc, map) {
     reader.datasetname = doc;
     reader.setupSequenceRenderer = setup;
 
+    if ( typeof google == 'undefined' && typeof document !== 'undefined') {
+        return reader;
+    }
+
     MASCP.Service.CacheService(reader);
 
     (function() {
@@ -4726,6 +4730,19 @@ MASCP.UserdataReader = MASCP.buildService(function(data) {
 MASCP.UserdataReader.prototype.toString = function() {
     return 'MASCP.UserdataReader.'+this.datasetname;
 };
+
+MASCP.UserdataReader.prototype.requestData = function()
+{
+    var agi = this.agi.toUpperCase();
+    return {
+        type: "GET",
+        dataType: "json",
+        data: { 'agi'       : agi,
+                'service'   : this.datasetname 
+        }
+    };
+};
+
 
 MASCP.UserdataReader.prototype.setupSequenceRenderer = function(renderer) {
     var reader = this;
