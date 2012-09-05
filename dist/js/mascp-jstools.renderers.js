@@ -1687,6 +1687,24 @@ var SVGCanvas = SVGCanvas || (function() {
             body.appendChild(content);
             fo.appendChild(html);
             callout.setAttribute('transform','translate('+(x*RS)+','+((y+20)*RS)+')');
+            callout.setHeight = setHeight;
+            if ( ! opts.align ) {
+                var currVbox = parseFloat(this.getAttribute('viewBox').split(/\s+/)[2]);
+                if (((x + 10) + 0.5*opts.width)*RS > currVbox ) {
+                    opts.align = 'right';
+                }
+                if ((x - 0.5*opts.width)*RS < 0) {
+                    opts.align = 'left';
+                }
+            }
+            if (opts.align) {
+                var shifter = opts.align == "right" ? -0.5 : 0.5;
+                back.setAttribute('transform', 'translate('+(shifter*opts.width*RS)+',0)');
+                pres_box.setAttribute('transform', 'translate('+(shifter*opts.width*RS)+',0)');
+                poly.setAttribute('transform', 'translate('+(0*shifter*opts.width*RS)+',0)');
+                poly.setAttribute('points', shifter > 0 ? "0,500 500,1000 0,1000" : "0,500 0,1000 -500,1000");
+                fo.setAttribute('transform', 'translate('+(shifter*opts.width*RS)+',0)');
+            }
             return callout;
         };
 
@@ -2726,10 +2744,9 @@ var addCalloutToLayer = function(layerName,element,opts) {
         log("Delaying rendering, waiting for sequence change");
         return;
     }
-    
-    var callout = canvas.callout(this._index+0.5,0.01,element,{'width' : opts.width || 100 ,'height': opts.height || 100 });
-    callout.setAttribute('height',10*this._renderer._RS);
-    this._renderer._canvas_callout_padding = Math.max((opts.height || 100),this._renderer._canvas_callout_padding||0);
+    var callout = canvas.callout(this._index+0.5,0.01,element,{'width' : (10*opts.width) || 100 ,'height': (opts.height * 10) || 100, 'align' : opts.align });
+    callout.setAttribute('height',this._renderer._RS*10);
+    this._renderer._canvas_callout_padding = Math.max(((10*opts.height) || 100),this._renderer._canvas_callout_padding||0);
     this._renderer._layer_containers[layerName].push(callout);
     callout.clear = function() {
         var cont = renderer._layer_containers[layerName];
