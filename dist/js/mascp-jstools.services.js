@@ -2374,7 +2374,7 @@ if (typeof module != 'undefined' && module.exports){
         } else {
             var self_func = arguments.callee;
             authenticate(function() {
-                self_func.call(null,callback);        
+                self_func.call(null,callback);
             });
             return;
         }
@@ -2472,7 +2472,7 @@ if (typeof module != 'undefined' && module.exports){
         var script = document.createElement('script');
         script.type = 'text/javascript';
         script.setAttribute('id','ssheet-'+doc_id);
-        script.src = "http://spreadsheets.google.com/feeds/cells/"+doc_id+"/1/public/basic?alt=json-in-script&callback=gotData";
+        script.src = "http://spreadsheets.google.com/feeds/cells/"+doc_id+"/1/public/basic?alt=json-in-script&callback=cback"+doc_id;
         script.addEventListener('error', function() {
             if (script.parentNode) {
                 script.parentNode.removeChild(script);
@@ -5010,7 +5010,7 @@ MASCP.UserdataReader.prototype.setData = function(name,data) {
     if ( ! data.title ) {
         data.title = name;
     }
-    
+
     var dataset;
 
     if (typeof this.map == 'object') {
