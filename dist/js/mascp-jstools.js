@@ -5424,7 +5424,7 @@ MASCP.UniprotReader.Result.prototype.getSequence = function() {
     return this._data.data[0];
 };
 
-MASCP.UniprotReader.readFastaFile = function(datablock) {
+MASCP.UniprotReader.readFastaFile = function(datablock,callback) {
     var chunks = (datablock.split('>'));
     var datas = {};
     chunks.forEach(function(entry) {
@@ -5447,7 +5447,11 @@ MASCP.UniprotReader.readFastaFile = function(datablock) {
         return dat.data;
     };
     writer.datasetname = "UniprotReader";
-    writer.setData("UniprotReader",{"data" : datas});
+    callback(writer);
+    setTimeout(function() {
+        writer.setData("UniprotReader",{"data" : datas});
+    },0);
+    return writer;
 };
 /**
  * @fileOverview    Classes for getting arbitrary user data onto the GATOR
@@ -5639,6 +5643,7 @@ MASCP.UserdataReader.prototype.setData = function(name,data) {
             accs.push(acc);
         }
     }
+    var total = accs.length;
 
     var retrieve = this.retrieve;
 
@@ -5658,6 +5663,7 @@ MASCP.UserdataReader.prototype.setData = function(name,data) {
             return;
         }
         var acc = accs.shift();
+        bean.fire(self,'progress',[100 * ((total - accs.length) / total), total - accs.length, total]);
         inserter.retrieve(acc,arguments.callee);
     })();
 
