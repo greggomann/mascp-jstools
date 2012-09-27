@@ -6518,7 +6518,6 @@ MASCP.SequenceRenderer = (function() {
                         });
                     }
                 }
-
                 for (i = ((renderer_track_order || []).length - 1); i >= 0; i--) {
                     if (track_order.indexOf(renderer_track_order[i]) < 0) {
                         this.hideLayer(renderer_track_order[i]);
@@ -6528,9 +6527,12 @@ MASCP.SequenceRenderer = (function() {
                     }
                 }
                 renderer_track_order = track_order;
+
                 if (this.refresh) {
                     this.refresh(true);
                 }
+                jQuery(renderer).trigger('orderChanged', [ track_order ] );
+
             }
         };
 
