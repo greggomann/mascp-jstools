@@ -612,7 +612,7 @@ MASCP.CondensedSequenceRenderer.prototype.createHydropathyLayer = function(windo
 };
 
 (function() {
-var addElementToLayer = function(layerName) {
+var addElementToLayer = function(layerName,opts) {
     var canvas = this._renderer._canvas;
 
     if ( ! canvas ) {        
@@ -645,7 +645,21 @@ var addElementToLayer = function(layerName) {
             return renderer._visibleTracers();
         };
     }
-    
+    if ( ! opts ) {
+        opts = {};
+    }
+
+    var scale = 1;
+    if (opts.height) {
+        scale = opts.height / this._renderer._layer_containers[layerName].track_height;
+    }
+
+    var tracer_marker = canvas.growingMarker(0,0,opts.content || layerName.charAt(0).toUpperCase(),opts);
+    tracer_marker.setAttribute('transform','translate('+((this._index + 0.5) * this._renderer._RS) +',0.01) scale('+scale+')');
+    tracer_marker.setAttribute('height','250');
+    tracer_marker.firstChild.setAttribute('transform', 'translate(-100,0) rotate(0,100,0.001)');
+
+    // tracer_marker.setAttribute('transform','scale(0.5)');
     // tracer_marker.zoom_level = 'text';
     tracer_marker.setAttribute('visibility','hidden');
 
@@ -1321,7 +1335,7 @@ clazz.prototype.addTrack = function(layer) {
     if ( ! layer_containers[layer.name] || layer_containers[layer.name] === null) {
         layer_containers[layer.name] = this._canvas.set();
         if ( ! layer_containers[layer.name].track_height) {
-            layer_containers[layer.name].track_height = 4;
+            layer_containers[layer.name].track_height = renderer.trackHeight || 4;
         }
         jQuery(layer).unbind('visibilityChange',vis_change_event).bind('visibilityChange',vis_change_event);
         var event_names = ['click','mouseover','mousedown','mousemove','mouseout','mouseup','mouseenter','mouseleave'];
@@ -1468,6 +1482,7 @@ clazz.prototype.refresh = function(animated) {
     var RS = this._RS;
     var track_heights = 0;
     var order = this.trackOrder || [];
+    var fixed_font_scale = this.fixedFontScale;
     
     if (this.navigation) {
         this.navigation.reset();
@@ -1532,7 +1547,7 @@ clazz.prototype.refresh = function(animated) {
             
             if (this.navigation) {
                 var grow_scale = this.grow_container ? 1 / this.zoom : 1;
-                this.navigation.renderTrack(MASCP.getLayer(name), (y_val)*RS , RS * track_height, { 'font-scale' : (container.track_height / track_height) * 3 * grow_scale } );
+                this.navigation.renderTrack(MASCP.getLayer(name), (y_val)*RS , RS * track_height, { 'font-scale' : ((container.track_height / track_height) * 3 * grow_scale) } );
             }
             track_heights += (this.zoom * track_height) + this.trackGap;
         } else {
@@ -1544,7 +1559,7 @@ clazz.prototype.refresh = function(animated) {
             }
             if (this.navigation) {
                 y_val -= 1*container.track_height/this.zoom;
-                this.navigation.renderTrack(MASCP.getLayer(name), y_val*RS , RS * 3 * container.track_height / this.zoom );
+                this.navigation.renderTrack(MASCP.getLayer(name), y_val*RS , RS * 3 * container.track_height / this.zoom, fixed_font_scale ? { 'font-scale' : fixed_font_scale } : null );
                 track_heights += container.track_height;
             }
             track_heights += container.track_height + this.trackGap;
