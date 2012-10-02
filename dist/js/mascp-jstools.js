@@ -8407,6 +8407,12 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
 (function(clazz) {
     var createCanvasObject = function() {
         var renderer = this;
+        this.win = function() {
+            if (this._container && this._container.ownerDocument && this._container.ownerDocument.defaultView) {
+                return this._container.ownerDocument.defaultView;
+            }
+            return null;
+        };
 
         if (this._object) {
             if (typeof svgweb != 'undefined') {
@@ -9857,7 +9863,7 @@ clazz.prototype.enablePrintResizing = function() {
         self.refresh();
         self.grow_container = false;
     };
-    window.matchMedia('print').addListener(self._media_func);
+    (self.win() || window).matchMedia('print').addListener(self._media_func);
 };
 
 clazz.prototype.wireframe = function() {
@@ -10249,6 +10255,10 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
 
     var Navigation = function(parent_canvas,renderer) {
         SVGCanvas(parent_canvas);
+
+        this.win = function() {
+            return renderer.win();
+        };
 
         buildNavPane.call(this,parent_canvas);
 
@@ -10695,7 +10705,7 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
 
         close_group.style.cursor = 'pointer';
         if (typeof matchMedia !== 'undefined') {
-            matchMedia('print').addListener(function(match) {
+            (this.win() || window).matchMedia('print').addListener(function(match) {
                 if (match.matches) {
                     close_group.setAttribute('display','none');
                     tracks_button.setAttribute('display','none');
