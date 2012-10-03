@@ -1079,6 +1079,12 @@ base.retrieve = function(agi,callback)
         return true;
     };
 
+    clazz.FirstAgi = function(service,cback) {
+        var serviceString = service.toString();
+        first_accession(serviceString,cback);
+        return true;
+    };
+
     clazz.ClearCache = function(service,agi) {
         var serviceString = service.toString();
         clear_service(serviceString,agi);
@@ -1325,10 +1331,11 @@ base.retrieve = function(agi,callback)
             var trans = idb.transaction(["cached"],"readwrite");
             var store = trans.objectStore("cached");
             var idx = store.index("services");
-            idx.openCursor().onsuccess = function(event) {
+            var range = IDBKeyRange.only(service);
+            idx.openCursor(range).onsuccess = function(event) {
                 var cursor = event.target.result;
                 if (cursor) {
-                    if ((cursor.value.service.indexOf(service) >= 0) && (! acc || (cursor.value.acc == acc) )) {
+                    if ((! acc || (cursor.value.acc == acc) )) {
                         store.delete(cursor.value.id);
                     }
                     cursor.continue();
@@ -1341,30 +1348,41 @@ base.retrieve = function(agi,callback)
             var store = trans.objectStore("cached");
             var idx = store.index("services");
             var results = [];
-            idx.openKeyCursor(null, "nextunique").onsuccess = function(event) {
+            var range = IDBKeyRange.only(service);
+            idx.openKeyCursor(range, "nextunique").onsuccess = function(event) {
                 var cursor = event.target.result;
                 if (cursor) {
-                    if (cursor.key.indexOf(service) >= 0) {
-                        results.push(cursor.key);
-                    }
+                    results.push(cursor.key);
                     cursor.continue();
                 } else {
                     cback.call(MASCP.Service,results);
                 }
             };
         };
-
+        first_accession = function(service,cback) {
+            var trans = idb.transaction(["cached"],"readonly");
+            var store = trans.objectStore("cached");
+            var idx = store.index("services");
+            var range = IDBKeyRange.only(service);
+            idx.openCursor(range,"nextunique").onsuccess = function(event) {
+                var cursor = event.target.result;
+                if (cursor) {
+                    cback.call(MASCP.Service,cursor.value.acc);
+                } else {
+                    cback.call(MASCP.Service,null);
+                }
+            };
+        };
         cached_accessions = function(service,cback) {
             var trans = idb.transaction(["cached"],"readonly");
             var store = trans.objectStore("cached");
-            var idx = store.index("entries");
+            var idx = store.index("services");
             var results = [];
-            idx.openKeyCursor(null, "nextunique").onsuccess = function(event) {
+            var range = IDBKeyRange.only(service);
+            idx.openCursor(range).onsuccess = function(event) {
                 var cursor = event.target.result;
                 if (cursor) {
-                    if (cursor.key[1] == service) {
-                        results.push(cursor.key[0]);
-                    }
+                    results.push(cursor.value.acc);
                     cursor.continue();
                 } else {
                     cback.call(MASCP.Service,results);
@@ -1472,6 +1490,17 @@ base.retrieve = function(agi,callback)
                 return uniques;
             });
         };
+
+        first_accession = function(service,cback) {
+            db.all("SELECT distinct acc from datacache where service = ? limit 1",[service],function(err,records) {
+                if (records.length < 1) {
+                    cback.call(MASCP.Service,null);
+                } else {
+                    cback.call(MASCP.Service,records[i].acc);
+                }
+            });
+        };
+
         
         cached_accessions = function(service,cback) {
             db.all("SELECT distinct acc from datacache where service = ?",[service],function(err,records) {
@@ -1616,6 +1645,22 @@ base.retrieve = function(agi,callback)
             cback.call(clazz,uniques);
 
             return uniques;
+        };
+
+        first_accession = function(service,cback) {
+            if ("localStorage" in window) {
+                var key;
+                var re = new RegExp("^"+service);
+                for (var i = 0, len = localStorage.length; i < len; i++){
+                    key = localStorage.key(i);
+                    if (re.test(key)) {
+                        key = key.replace(service,'');
+                        cback.call(clazz,uniques);
+                        return;
+                    }
+                }
+            }
+            cback.call(clazz,null);
         };
 
         cached_accessions = function(service,cback) {
@@ -3322,8 +3367,8 @@ MASCP.GoogledataReader.prototype.createReader = function(doc, map) {
         var a_temp_reader = new MASCP.UserdataReader();
         a_temp_reader.datasetname = doc;
         MASCP.Service.CacheService(a_temp_reader);
-        MASCP.Service.CachedAgis(a_temp_reader,function(accs) {
-            if ( accs.length < 1 ) {
+        MASCP.Service.FirstAgi(a_temp_reader,function(entry) {
+            if ( ! entry ) {
                 get_data(null);
                 return;
             }
@@ -3331,7 +3376,7 @@ MASCP.GoogledataReader.prototype.createReader = function(doc, map) {
                 bean.fire(reader,'ready');
                 return;
             }
-            a_temp_reader.retrieve(accs[0],function() {
+            a_temp_reader.retrieve(entry,function() {
                 get_data(this.result._raw_data.etag);
             });
         });
