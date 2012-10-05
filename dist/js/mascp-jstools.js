@@ -1014,7 +1014,7 @@ base.retrieve = function(agi,callback)
             id = id.toLowerCase();
             self.agi = id;
 
-            get_db_data(id,self.toString(),function(err,data) {
+            get_db_data(self.avoid_database ? null : id,self.toString(),function(err,data) {
                 if (data) {
                     if (cback) {
                         self.result = null;
@@ -1262,6 +1262,10 @@ base.retrieve = function(agi,callback)
         };
 
         find_latest_data = function(acc,service,timestamps,cback) {
+            if ( ! acc ) {
+                cback.call();
+                return;
+            }
             var trans = idb.transaction(["cached"],"readonly");
             var store = trans.objectStore("cached");
             var idx = store.index("entries");
@@ -5675,6 +5679,7 @@ MASCP.UniprotReader.readFastaFile = function(datablock,callback) {
     writer.datasetname = "UniprotReader";
     callback(writer);
     setTimeout(function() {
+        writer.avoid_database = true;
         writer.setData("UniprotReader",{"data" : datas});
     },0);
     return writer;
@@ -5843,7 +5848,9 @@ MASCP.UserdataReader.prototype.setData = function(name,data) {
     this.data = dataset;
     
     var inserter = new MASCP.UserdataReader();
-
+    if (this.avoid_database) {
+        inserter.avoid_database = true;
+    }
     inserter.toString = function() {
         return self.toString();
     };
@@ -5865,6 +5872,7 @@ MASCP.UserdataReader.prototype.setData = function(name,data) {
             if (acc.match(/[A-Z]/)) {
                 dataset[acc.toLowerCase()] = dataset[acc];
                 delete dataset[acc];
+                acc = acc.toLowerCase();
             }
             accs.push(acc);
         }
