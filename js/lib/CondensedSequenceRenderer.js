@@ -645,7 +645,6 @@ var addElementToLayer = function(layerName) {
             return renderer._visibleTracers();
         };
     }
-    var tracer_marker = canvas.marker(this._index+0.5,10,0.5,layerName.charAt(0).toUpperCase());
     
     // tracer_marker.zoom_level = 'text';
     tracer_marker.setAttribute('visibility','hidden');

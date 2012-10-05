@@ -243,7 +243,13 @@ MASCP.Pep2ProReader.prototype._groupSummary = function(sequenceRenderer)
             if ( ! positions[index] ) {
                 endpoint -= 1;
             }
-            sequenceRenderer.getAminoAcidsByPosition([last_start])[0].addBoxOverlay(overlay_name,endpoint);
+
+            if (sequenceRenderer.getAminoAcidsByPosition([last_start])[0]) {
+                sequenceRenderer.getAminoAcidsByPosition([last_start])[0].addBoxOverlay(overlay_name,endpoint);
+            } else if (sequenceRenderer.getAminoAcidsByPosition([last_start-1])[0]) {
+                sequenceRenderer.getAminoAcidsByPosition([last_start-1])[0].addBoxOverlay(overlay_name,endpoint);
+            }
+
             last_start = null;
         }
         if (positions[index] && last_start === null) {
