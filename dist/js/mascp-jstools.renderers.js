@@ -1801,7 +1801,7 @@ var SVGCanvas = SVGCanvas || (function() {
                 if (top_offset == 0) {
                     centering_offset = 0;
                 }
-                this.firstChild.setAttribute('transform','translate(-100,'+(top_offset*10/scale_val)+') rotate('+this.angle+',100,0)');
+                this.firstChild.setAttribute('transform','translate(-100,'+(top_offset*RS)+') rotate('+this.angle+',100,0)');
             };
             return result;
         };
@@ -2729,6 +2729,13 @@ var addElementToLayer = function(layerName,opts) {
     tracer_marker.setAttribute('transform','translate('+((this._index + 0.5) * this._renderer._RS) +',0.01) scale('+scale+')');
     tracer_marker.setAttribute('height','250');
     tracer_marker.firstChild.setAttribute('transform', 'translate(-100,0) rotate(0,100,0.001)');
+
+    if (typeof opts.offset == 'undefined' || opts.offset === null) {
+        // tracer_marker.offset = 2.5*this._renderer._layer_containers[layerName].track_height;
+    } else {
+        tracer_marker.offset = opts.offset;
+    }
+
 
     // tracer_marker.setAttribute('transform','scale(0.5)');
     // tracer_marker.zoom_level = 'text';
