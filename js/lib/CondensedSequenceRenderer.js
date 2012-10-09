@@ -412,9 +412,6 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
             el._renderer = renderer;
             renderer._extendElement(el);
             el.amino_acid = this;
-            el._predicted_coverage = 0;
-            el._gator_coverage = 0;
-            el._reader_coverage = 0;
             seq_els.push(el);
         });
 
