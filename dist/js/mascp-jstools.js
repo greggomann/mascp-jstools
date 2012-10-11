@@ -1104,9 +1104,16 @@ base.retrieve = function(agi,callback)
     };
 
     clazz.BulkOperation = function() {
-        begin_transaction();
-        return function() {
-            end_transaction();
+        var success = begin_transaction();
+        return success ? function(callback) {
+            if ( ! callback ) {
+                callback = function() {};
+            }
+            end_transaction(callback);
+        } : function(callback) {
+            if (callback) {
+                callback();
+            }
         };
     };
 
@@ -1204,16 +1211,31 @@ base.retrieve = function(agi,callback)
         var transaction_find_latest;
         var transaction_data = [];
         begin_transaction = function() {
+            if (transaction_store_db != null) {
+                return false;
+            }
             transaction_store_db = store_db_data;
             store_db_data = function(acc,service,data) {
                 transaction_data.push([acc,service,data]);
             };
+            return true;
         };
 
-        end_transaction = function() {
+        end_transaction = function(callback) {
+            if (transaction_store_db === null) {
+                callback(null);
+                return;
+            }
             store_db_data = transaction_store_db;
+            transaction_store_db = null;
             var trans = idb.transaction(["cached"], "readwrite");
             var store = trans.objectStore("cached");
+            trans.oncomplete = function(event) {
+                callback(null);
+            };
+            trans.onerror = function(event) {
+                callback(event.target.errorCode);
+            };
             while (transaction_data.length > 0) {
                 var row = transaction_data.shift();
                 var acc = row[0];
@@ -1462,20 +1484,38 @@ base.retrieve = function(agi,callback)
             }
         });
 
-        var old_get_db_data = get_db_data;
+        var old_get_db_data = null;
         
         begin_transaction = function() {
-            get_db_data = function(id,clazz,cback) {
-                 setTimeout(function() {
-                     cback.call(null,null);
-                 },0);
-            };
-            db.exec("BEGIN TRANSACTION;",function() {});
+            if (old_get_db_data !== null) {
+                return false;
+            }
+
+            db.exec("BEGIN TRANSACTION;",function(err) {
+                if ( err ) {
+                    return;
+                }
+                old_get_db_data = get_db_data;
+
+                get_db_data = function(id,clazz,cback) {
+                     setTimeout(function() {
+                         cback.call(null,null);
+                     },0);
+                };
+            });
+            return true;
         };
         
-        end_transaction = function() {
-            get_db_data = old_get_db_data;
-            db.exec("END TRANSACTION;",function() {});
+        end_transaction = function(callback) {
+            if (old_get_db_data === null) {
+                callback();
+                return;
+            }
+            db.exec("END TRANSACTION;",function(err) {
+                get_db_data = old_get_db_data;
+                old_get_db_data = null;
+                callback(err);
+            });
         };
         
         sweep_cache = function(timestamp) {
@@ -1739,8 +1779,11 @@ base.retrieve = function(agi,callback)
         begin_transaction = function() {
             // No support for transactions here. Do nothing.
         };
-        end_transaction = function() {
+        end_transaction = function(callback) {
             // No support for transactions here. Do nothing.
+            setTimeout(function(){
+                callback();
+            },0);
         };
     } else {
 
@@ -1776,8 +1819,11 @@ base.retrieve = function(agi,callback)
         begin_transaction = function() {
             // No support for transactions here. Do nothing.
         };
-        end_transaction = function() {
+        end_transaction = function(callback) {
             // No support for transactions here. Do nothing.
+            setTimeout(function(){
+                callback();
+            },0);
         };
     }
     
@@ -5906,11 +5952,17 @@ MASCP.UserdataReader.prototype.setData = function(name,data) {
             self.retrieve(id,cback);
         });
     };
-
+    var trans = MASCP.Service.BulkOperation();
     (function() {
         if (accs.length === 0) {
             self.retrieve = retrieve;
-            bean.fire(self,'ready');
+            trans(function(err) {
+                if ( ! err ) {
+                    bean.fire(self,'ready');
+                } else {
+                    bean.fire(self,'error');
+                }
+            });
             return;
         }
         var acc = accs.shift();
