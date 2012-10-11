@@ -7796,9 +7796,11 @@ var SVGCanvas = SVGCanvas || (function() {
                             curr_style += '; '+hash[key];
                             value = curr_style;
                         }
+                        var has_translate = an_array[i].hasAttribute('transform') && (an_array[i].getAttribute('transform').indexOf('translate') >= 0);
+
                         if (key == 'height' && an_array[i].setHeight ) { //hasAttribute('transform') && ! an_array[i].no_scale) {
                             an_array[i].setHeight(hash[key]);
-                        } else if  (! (an_array[i].hasAttribute('transform') && (key == 'y' || key == 'x'))) {
+                        } else if  (! (has_translate && (key == 'y' || key == 'x'))) {
                             an_array[i].setAttribute(key, value);                        
                         }
                         if (key == 'y' && an_array[i].hasAttribute('d')) {
@@ -8314,22 +8316,25 @@ var SVGCanvas = SVGCanvas || (function() {
             };
 
             var marker = this.group();
-
+            if (! opts ) {
+                opts = {};
+            }
             var fill_color = (opts && opts.border) ? opts.border : 'rgb(0,0,0)';
+            if ( ! opts.bare_element ) {
+                marker.push(this.circle(0,-0.5*r,r));
 
-            marker.push(this.circle(0,-0.5*r,r));
+                marker.lastChild.style.fill = fill_color;
 
-            marker.lastChild.style.fill = fill_color;
+                marker.push(this.circle(0,1.5*r,r));
 
-            marker.push(this.circle(0,1.5*r,r));
+                marker.lastChild.style.fill = fill_color;
 
-            marker.lastChild.style.fill = fill_color;
-
-            var arrow = this.poly((-0.9*r*RS)+','+(0*r*RS)+' 0,'+(-2.5*r*RS)+' '+(0.9)*r*RS+','+(0*r*RS));
+                var arrow = this.poly((-0.9*r*RS)+','+(0*r*RS)+' 0,'+(-2.5*r*RS)+' '+(0.9)*r*RS+','+(0*r*RS));
 
 
-            arrow.setAttribute('style','fill:'+fill_color+';stroke-width: 0;');
-            marker.push(arrow);
+                arrow.setAttribute('style','fill:'+fill_color+';stroke-width: 0;');
+                marker.push(arrow);
+            }
             marker.setAttribute('transform','translate('+((cx)*RS)+','+0.5*cy*RS+') scale(1)');
             marker.setHeight = setHeight;
             marker.setAttribute('height', dim.R*RS);
@@ -8338,9 +8343,13 @@ var SVGCanvas = SVGCanvas || (function() {
                 marker.push(marker.contentElement);
             } else {
                 marker.contentElement = this.group();
-                marker.contentElement.push(this.text_circle(0,0.5*r,1.75*r,"",opts));
+                if (! opts.bare_element ) {
+                    marker.contentElement.push(this.text_circle(0,0.5*r,1.75*r,"",opts));
+                }
                 if (symbol) {
-                    symbol.setAttribute('transform','translate(0,'+(0.5*r*RS)+')');
+                    if ( ! opts.bare_element ) {
+                        symbol.setAttribute('transform','translate(0,'+(0.5*r*RS)+')');
+                    }
                     marker.contentElement.push(symbol);
                 }
                 marker.push(marker.contentElement);
@@ -9298,12 +9307,12 @@ var addTextToElement = function(layerName,width,opts) {
     text.setAttribute('fill','#ffffff');
     text.setAttribute('stroke','#000000');
     text.setAttribute('stroke-width','5');
-    text.setAttribute('style','font-family: sans-serif; text-anchor: middle;');
+    text.setAttribute('style','font-family: Helvetica, Arial, Gil Sans, sans-serif; text-anchor: middle;');
     text.firstChild.setAttribute('dy','2ex');
     text.setAttribute('text-anchor','middle');
     text.setHeight = function(height) {
         text.setAttribute('font-size', 0.75*height);
-    }
+    };
     this._renderer._layer_containers[layerName].push(text);
     return text;
 }
@@ -10188,7 +10197,7 @@ clazz.prototype.refresh = function(animated) {
             }
             continue;
         } else {
-            container.attr({ 'opacity' : '1' });
+            // container.attr({ 'opacity' : '1' });
         }
         if (container.tracers) {
             var disp_style = (this.isLayerActive(name) && (this.zoom > 3.6)) ? 'visible' : 'hidden';
