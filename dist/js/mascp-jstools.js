@@ -1109,9 +1109,12 @@ base.retrieve = function(agi,callback)
         return true;
     };
 
-    clazz.ClearCache = function(service,agi) {
+    clazz.ClearCache = function(service,agi,callback) {
         var serviceString = service.toString();
-        clear_service(serviceString,agi);
+        if ( ! callback ) {
+            callback = function() {};
+        }
+        clear_service(serviceString,agi,callback);
         return true;
     };
 
@@ -1395,7 +1398,7 @@ base.retrieve = function(agi,callback)
             };
         };
 
-        clear_service = function(service,acc) {
+        clear_service = function(service,acc,callback) {
             var trans = idb.transaction(["cached"],"readwrite");
             var store = trans.objectStore("cached");
             var idx = store.index("services");
@@ -1407,6 +1410,8 @@ base.retrieve = function(agi,callback)
                         store.delete(cursor.value.id);
                     }
                     cursor.continue();
+                } else {
+                    callback.call(MASCP.Service);
                 }
             };
         };
@@ -1547,13 +1552,13 @@ base.retrieve = function(agi,callback)
             db.all("DELETE from datacache where retrieved <= ? ",[timestamp],function() {});
         };
         
-        clear_service = function(service,acc) {
+        clear_service = function(service,acc,callback) {
             var servicename = service;
             servicename += "%";
             if ( ! acc ) {
-                db.all("DELETE from datacache where service like ? ",[servicename],function() {});
+                db.all("DELETE from datacache where service like ? ",[servicename],function() { callback.call(MASCP.Service); });
             } else {
-                db.all("DELETE from datacache where service like ? and acc = ?",[servicename,acc.toLowerCase()],function() {});
+                db.all("DELETE from datacache where service like ? and acc = ?",[servicename,acc.toLowerCase()],function() { callback.call(MASCP.Service); });
             }
             
         };
@@ -1689,7 +1694,7 @@ base.retrieve = function(agi,callback)
             }
         };
         
-        clear_service = function(service,acc) {
+        clear_service = function(service,acc,callback) {
             if ("localStorage" in window) {
                 var keys = [];
                 for (var i = 0, len = localStorage.length; i < len; i++) {
@@ -1705,6 +1710,7 @@ base.retrieve = function(agi,callback)
                     }
                     key = keys.shift();
                 }
+                callback.call(MASCP.Service);
             }            
         };
         
@@ -3511,9 +3517,14 @@ MASCP.GoogledataReader.prototype.createReader = function(doc, map) {
             }
             // Clear out the cache since we have new data coming in
             console.log("Wiping out data on "+data.title+" ("+doc+")");
-            MASCP.Service.ClearCache(reader);
-            reader.map = map;
-            reader.setData(doc,data);
+            MASCP.Service.ClearCache(reader,null,function(error) {
+                if (error) {
+                    bean.fire(reader,"error",[error]);
+                    return;
+                }
+                reader.map = map;
+                reader.setData(doc,data);
+            });
         });
     }
     return reader;
