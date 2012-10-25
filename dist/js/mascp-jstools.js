@@ -8827,6 +8827,7 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
         var big_ticks = canvas.set();
         var little_ticks = canvas.set();
         var big_labels = canvas.set();
+        var huge_labels = canvas.set();
         var little_labels = canvas.set();
         var minor_mark = 10;
         var major_mark = 20;
@@ -8852,7 +8853,9 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
             } else if (( x % minor_mark ) === 0 && x !== 0) {
                 little_labels.push(canvas.text(x,7,""+(x)));
             }
-
+            if ( (x % (100*parseInt(this.sequence.length / 1000))) === 0 && x !== 0) {
+                huge_labels.push(canvas.text(x,30,""+(x)));
+            }
             x += 5;
         }
     
@@ -8880,6 +8883,8 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
         little_ticks.hide();
         little_labels.hide();
 
+        huge_labels.hide();
+
         canvas.addEventListener('zoomChange', function() {
                if (this.zoom > 3.6) {
                    little_ticks.hide();
@@ -8888,6 +8893,7 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
                    little_labels.attr({'font-size':2*RS+'pt'});
                    big_labels.attr({'font-size': 2*RS+'pt'});
                    axis.hide();
+                   huge_labels.hide();
                    if (this._visibleTracers && this._visibleTracers()) {
                        this._visibleTracers().show();
                    }
@@ -8902,10 +8908,11 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
                    little_ticks.attr({'stroke-width':0.3*RS+'pt'});
                    little_ticks.show();
                    little_labels.show();
+                   huge_labels.hide();
                    if (this.tracers) {
                        this.tracers.hide();
                    }
-               } else {
+               } else if (this.zoom > 0.2) {
                    if (this.tracers) {
                        this.tracers.hide();
                    }
@@ -8915,6 +8922,19 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
                    big_ticks.attr({'stroke-width':RS+'pt', 'transform' : '', 'stroke' : '#000000'});
                    big_labels.show();
                    big_labels.attr({'font-size':7*RS+'pt','y':5*RS});
+                   little_ticks.hide();
+                   little_labels.hide();
+                   huge_labels.hide();
+               } else {
+                   if (this.tracers) {
+                       this.tracers.hide();
+                   }
+                   axis.hide();
+                   big_ticks.hide();
+                   big_labels.hide();
+
+                   huge_labels.show();
+                   huge_labels.attr({'font-size':parseInt(30*2*RS*0.2/canvas.zoom)+'pt','y':parseInt(40*2*RS*0.2/canvas.zoom)});
                    little_ticks.hide();
                    little_labels.hide();
                }
@@ -9683,8 +9703,12 @@ MASCP.CondensedSequenceRenderer.prototype.addTextTrack = function(seq,container)
            amino_acids.attr({'display' : 'block'});
            amino_acids_shown = true;
            update_sequence();
-       } else {
+       } else if (canvas.zoom > 0.2) {
            renderer._axis_height = 30;
+           amino_acids.attr({'display' : 'none'});
+           amino_acids_shown = false;
+       } else {
+           renderer._axis_height = parseInt(60 * 2 * (0.2 / canvas.zoom));
            amino_acids.attr({'display' : 'none'});   
            amino_acids_shown = false;        
        }
@@ -10260,7 +10284,7 @@ clazz.prototype.refresh = function(animated) {
     var viewBox = [-1,0,0,0];
     viewBox[0] = -2*RS;
     viewBox[2] = (this.sequence.split('').length+(this.padding)+2)*RS;
-    viewBox[3] = (this._axis_height + (track_heights / this.zoom)+ (this.padding))*RS;
+    viewBox[3] = (this._axis_height + (track_heights / this.zoom)+ (this.padding / this.zoom))*RS;
     this._canvas.setAttribute('viewBox', viewBox.join(' '));
     this._canvas._canvas_height = viewBox[3];
 
@@ -10269,7 +10293,7 @@ clazz.prototype.refresh = function(animated) {
 
     outer_viewbox[0] = 0;
     outer_viewbox[2] = (this.zoom)*(2*this.sequence.length)+(this.padding);
-    outer_viewbox[3] = (this.zoom)*2*(this._axis_height + (track_heights / this.zoom)+ (this.padding));
+    outer_viewbox[3] = (this.zoom)*2*(this._axis_height + (track_heights / this.zoom)+ (this.padding / this.zoom));
     if (! this.grow_container ) {
         this._container_canvas.setAttribute('viewBox', outer_viewbox.join(' '));
     }
