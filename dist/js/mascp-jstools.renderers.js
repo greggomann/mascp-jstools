@@ -1498,7 +1498,7 @@ var SVGCanvas = SVGCanvas || (function() {
         
         var RS = canvas.RS || DEFAULT_RS;
         canvas.RS = RS;
-        
+        canvas.font_order = 'Helvetica, Verdana, Arial, Sans-serif'
         extended_elements.push(canvas);
         
         canvas.makeEl = function(name,attributes) {
@@ -2005,7 +2005,7 @@ var SVGCanvas = SVGCanvas || (function() {
                 a_tspan.textContent = text;
                 a_tspan.setAttribute('dy','0');
             }
-            a_text.style.fontFamily = 'Helvetica, Verdana, Arial, Sans-serif';
+            a_text.style.fontFamily = this.font_order || 'Helvetica, Verdana, Arial, Sans-serif';
             a_text.setAttribute('x',typeof x == 'string' ? x : x * RS);
             a_text.setAttribute('y',typeof y == 'string' ? y : y * RS);        
             this.appendChild(a_text);
@@ -2126,7 +2126,6 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
             this._object = null;
         }
         var canvas;
-
         if ( document.implementation.hasFeature("http://www.w3.org/TR/SVG11/feature#BasicStructure", "1.1") ) {
             var native_canvas = document.createElementNS(svgns,'svg');
             native_canvas.setAttribute('width','100%');
@@ -2144,11 +2143,17 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
         canvas.addEventListener('load',function() {
             var container_canv = this;
             SVGCanvas(container_canv);
+            if (renderer.font_order) {
+                container_canv.font_order = renderer.font_order;
+            }
             var group = container_canv.makeEl('g');
         
             var canv = container_canv.makeEl('svg');
             canv.RS = renderer._RS;
             SVGCanvas(canv);
+            if (renderer.font_order) {
+                canv.font_order = renderer.font_order;
+            }
             group.appendChild(canv);
             container_canv.appendChild(group);
 
@@ -2849,7 +2854,7 @@ var addTextToElement = function(layerName,width,opts) {
     text.setAttribute('fill','#ffffff');
     text.setAttribute('stroke','#000000');
     text.setAttribute('stroke-width','5');
-    text.setAttribute('style','font-family: Helvetica, Arial, Gil Sans, sans-serif; text-anchor: middle;');
+    text.setAttribute('style','font-family: '+canvas.font_order);
     text.firstChild.setAttribute('dy','2ex');
     text.setAttribute('text-anchor','middle');
     text.setHeight = function(height) {
