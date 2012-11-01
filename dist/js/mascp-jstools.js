@@ -1587,7 +1587,7 @@ base.retrieve = function(agi,callback)
                 if (records.length < 1) {
                     cback.call(MASCP.Service,null);
                 } else {
-                    cback.call(MASCP.Service,records[i].acc);
+                    cback.call(MASCP.Service,records[0].acc);
                 }
             });
         };
@@ -3469,7 +3469,7 @@ if (typeof module != 'undefined' && module.exports){
 
 var render_site = function(renderer) {
     var self = this;
-    var sites = self.result._raw_data.sites || [], i = 0, match = null;
+    var sites = self.result._raw_data.data.sites || [], i = 0, match = null;
     MASCP.registerLayer(self.datasetname,{ 'fullname' : self.result._raw_data.title });
     for (i = sites.length - 1; i >= 0; i--) {
         if (match = sites[i].match(/(\d+)/g)) {
@@ -3480,7 +3480,7 @@ var render_site = function(renderer) {
 
 var render_peptides = function(renderer) {
     var self = this;
-    var peptides = self.result._raw_data.peptides || [], i = 0, match = null;
+    var peptides = self.result._raw_data.data.peptides || [], i = 0, match = null;
     MASCP.registerLayer(self.datasetname,{ 'fullname' : self.result._raw_data.title });
     for (i = peptides.length - 1; i >= 0; i--) {
         if (match = peptides [i].match(/(\d+)/g)) {
@@ -5787,6 +5787,15 @@ if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
  *  @extends    MASCP.Service
  */
 MASCP.UniprotReader = MASCP.buildService(function(data) {
+                        if ( data && typeof(data) === 'string' ) {
+                            var dats = MASCP.UniprotReader.parseFasta(data);
+                            var key;
+                            for (key in dats) {
+                                if (dats.hasOwnProperty(key)) {
+                                    data = { 'data' : dats[key] };
+                                }
+                            }
+                        }
                         this._data = data || {};
                         if ( ! this._data.data ) {
                             this._data = { 'data' : ['',''] };
@@ -5801,7 +5810,8 @@ MASCP.UniprotReader.prototype.requestData = function()
     var self = this;
     return {
         type: "GET",
-        dataType: "json",
+        dataType: "txt",
+        'url'   : 'http://uniprot.org/uniprot/'+this.agi+'.fasta',
         data: { 'acc'   : this.agi,
                 'service' : 'uniprot' 
         }
@@ -5816,7 +5826,7 @@ MASCP.UniprotReader.Result.prototype.getSequence = function() {
     return this._data.data[0];
 };
 
-MASCP.UniprotReader.readFastaFile = function(datablock,callback) {
+MASCP.UniprotReader.parseFasta = function(datablock) {
     var chunks = (datablock.split('>'));
     var datas = {};
     chunks.forEach(function(entry) {
@@ -5831,6 +5841,13 @@ MASCP.UniprotReader.readFastaFile = function(datablock,callback) {
         var desc = header_data[2];
         datas[acc] = [seq,desc];
     });
+    return datas;
+}
+
+MASCP.UniprotReader.readFastaFile = function(datablock,callback) {
+
+    var datas = MASCP.UniprotReader.parseFasta(datablock);
+
     var writer = new MASCP.UserdataReader();
     writer.toString = function() {
         return "MASCP.UniprotReader";
@@ -5956,15 +5973,15 @@ var apply_map = function(data_block) {
         var row = databits.shift();
         var id = row[id_col].toLowerCase();
         if ( ! dataset[id] ) {
-            dataset[id] = {};
+            dataset[id] = {"data" : {}};
         }
         var obj = dataset[id];
         var i;
         for (i = cols_to_add.length - 1; i >= 0; i--) {
-            if ( ! obj[cols_to_add[i].name] ) {
-                obj[cols_to_add[i].name] = [];
+            if ( ! obj.data[cols_to_add[i].name] ) {
+                obj.data[cols_to_add[i].name] = [];
             }
-            obj[cols_to_add[i].name] = obj[cols_to_add[i].name].concat((row[cols_to_add[i].index] || '').split(','));
+            obj.data[cols_to_add[i].name] = obj.data[cols_to_add[i].name].concat((row[cols_to_add[i].index] || '').split(','));
         }
         obj.retrieved = data_block.retrieved;
         obj.title = data_block.title;
@@ -5998,7 +6015,7 @@ MASCP.UserdataReader.prototype.setData = function(name,data) {
         data.title = name;
     }
 
-    var dataset;
+    var dataset = {}; // Format is { "accession" : { "data" : {}, "retrieved" : "" , "title" : ""  } };
 
     if (typeof this.map == 'object') {
         dataset = apply_map.call(this,data);
@@ -6050,6 +6067,7 @@ MASCP.UserdataReader.prototype.setData = function(name,data) {
         });
     };
     if (accs.length < 1) {
+        bean.fire(self,'ready');
         return;
     }
     var trans = MASCP.Service.BulkOperation();
