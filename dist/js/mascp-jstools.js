@@ -1126,9 +1126,8 @@ base.retrieve = function(agi,callback)
     var transaction_ref_count = 0;
     var waiting_callbacks = [];
     clazz.BulkOperation = function(callback) {
-        begin_transaction(callback);
         transaction_ref_count++;
-        return function(callback) {
+        var trans = function(callback) {
             if ( ! callback ) {
                 callback = function() {};
             }
@@ -1143,6 +1142,8 @@ base.retrieve = function(agi,callback)
                 });
             }
         };
+        begin_transaction(callback,trans);
+        return trans;
     };
 
     var db,idb;
@@ -1238,10 +1239,10 @@ base.retrieve = function(agi,callback)
         var transaction_store_db;
         var transaction_find_latest;
         var transaction_data = [];
-        begin_transaction = function(callback) {
+        begin_transaction = function(callback,trans) {
             if (transaction_store_db != null) {
                 setTimeout(function() {
-                    callback.call();
+                    callback.call({ "transaction" : trans });
                 },0);
                 return false;
             }
@@ -1250,7 +1251,7 @@ base.retrieve = function(agi,callback)
                 transaction_data.push([acc,service,data]);
             };
             setTimeout(function() {
-                callback.call();
+                callback.call({ "transaction" : trans });
             },0);
             return true;
         };
@@ -1522,14 +1523,14 @@ base.retrieve = function(agi,callback)
 
         var old_get_db_data = null;
         
-        begin_transaction = function(callback) {
+        begin_transaction = function(callback,trans) {
             if (old_get_db_data !== null) {
-                callback.call();
+                callback.call({ "transaction" : trans });
                 return false;
             }
             db.exec("BEGIN TRANSACTION;",function(err) {
                 if ( err ) {
-                    callback.call(err);
+                    callback.call(null,err);
                     return;
                 }
                 old_get_db_data = get_db_data;
@@ -1539,7 +1540,7 @@ base.retrieve = function(agi,callback)
                          cback.call(null,null);
                      },0);
                 };
-                callback.call();
+                callback.call({ "transaction" : trans });
             });
             return true;
         };
@@ -6084,11 +6085,12 @@ MASCP.UserdataReader.prototype.setData = function(name,data) {
         bean.fire(self,'ready');
         return;
     }
-    var trans = MASCP.Service.BulkOperation(function(err) {
+    MASCP.Service.BulkOperation(function(err) {
         if (err) {
             bean.fire(self,'error');
             return;
         }
+        var trans = this.transaction;
         inserter.avoid_database = true;
         inserter.retrieve(accs[0],function() {
             while (accs.length > 0) {
