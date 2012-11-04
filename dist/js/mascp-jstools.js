@@ -5808,6 +5808,7 @@ MASCP.UniprotReader = MASCP.buildService(function(data) {
                             for (key in dats) {
                                 if (dats.hasOwnProperty(key)) {
                                     data = { 'data' : dats[key] };
+                                    this._raw_data = data;
                                 }
                             }
                         }
@@ -5850,7 +5851,7 @@ MASCP.UniprotReader.parseFasta = function(datablock) {
             return;
         }
         var header = lines.shift();
-        var seq = lines.join("\n");
+        var seq = lines.join("");
         var header_data = header.split('|');
         var acc = header_data[1];
         var desc = header_data[2];
