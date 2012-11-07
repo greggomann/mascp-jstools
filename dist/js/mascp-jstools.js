@@ -9884,23 +9884,27 @@ MASCP.CondensedSequenceRenderer.prototype.addTextTrack = function(seq,container)
         }
         if ((start + max_length) >= seq.length) {
             start = seq.length - max_length;
+            if (start < 0) {
+                start = 0;
+            }
         }
         a_text.replaceChild(document.createTextNode(seq.substr(start,max_length)),a_text.firstChild);
         a_text.setAttribute('dx',5+((start)*RS));
     };
-    
-    canvas.addEventListener('panstart', function() {
-        if (amino_acids_shown) {
-            amino_acids.attr( { 'display' : 'none'});
-        }
+    if ( ! canvas.panevents ) {
+        canvas.addEventListener('panstart', function() {
+            if (amino_acids_shown) {
+                amino_acids.attr( { 'display' : 'none'});
+            }
+        },false);
         bean.add(canvas,'panend', function() {
             if (amino_acids_shown) {
                 amino_acids.attr( {'display' : 'block'} );
                 update_sequence();
             }
-            bean.remove(canvas,'panend',arguments.callee);
         });
-    },false);
+        canvas.panevents = true;
+    }
        
     canvas.addEventListener('zoomChange', function() {
        if (canvas.zoom > 3.6) {
@@ -13016,6 +13020,7 @@ GOMap.Diagram.Dragger.prototype.applyToElement = function(targetElement) {
       if (document.createEvent) {
           self.clicktimeout = setTimeout(function() {
               var evObj = document.createEvent('Events');
+              self.clicktimeout = null;
               evObj.initEvent('panstart',false,true);
               targ.dispatchEvent(evObj);
           },200);
