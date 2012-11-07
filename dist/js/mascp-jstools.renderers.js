@@ -2050,6 +2050,39 @@ var SVGCanvas = SVGCanvas || (function() {
             g.setAttribute('transform','translate('+x*RS+','+y*RS+')');
             return g;
         };
+
+        // Calculate the bounding box of an element with respect to its parent element
+        // Thanks to http://stackoverflow.com/questions/10623809/get-bounding-box-of-element-accounting-for-its-transform
+        canvas.transformedBoundingBox = function(el){
+            var bb  = el.getBBox(),
+                svg = el.ownerSVGElement,
+                m   = el.getTransformToElement(el.parentNode);
+            // Create an array of all four points for the original bounding box
+            var pts = [
+                svg.createSVGPoint(), svg.createSVGPoint(),
+                svg.createSVGPoint(), svg.createSVGPoint()
+            ];
+            pts[0].x=bb.x;          pts[0].y=bb.y;
+            pts[1].x=bb.x+bb.width; pts[1].y=bb.y;
+            pts[2].x=bb.x+bb.width; pts[2].y=bb.y+bb.height;
+            pts[3].x=bb.x;          pts[3].y=bb.y+bb.height;
+
+            // Transform each into the space of the parent,
+            // and calculate the min/max points from that.
+            var xMin=Infinity,xMax=-Infinity,yMin=Infinity,yMax=-Infinity;
+            pts.forEach(function(pt){
+                pt = pt.matrixTransform(m);
+                xMin = Math.min(xMin,pt.x);
+                xMax = Math.max(xMax,pt.x);
+                yMin = Math.min(yMin,pt.y);
+                yMax = Math.max(yMax,pt.y);
+            });
+
+            // Update the bounding box with the new values
+            bb.x = xMin; bb.width  = xMax-xMin;
+            bb.y = yMin; bb.height = yMax-yMin;
+            return bb;
+        };
         
         canvas.set = function() {
             var an_array = [];
@@ -2765,6 +2798,15 @@ var addElementToLayer = function(layerName,opts) {
     tracer_marker.setAttribute('transform','translate('+((this._index + 0.5) * this._renderer._RS) +',0.01) scale('+scale+')');
     tracer_marker.setAttribute('height','250');
     tracer_marker.firstChild.setAttribute('transform', 'translate(-100,0) rotate(0,100,0.001)');
+    tracer.setHeight = function(height) {
+        var bbox = canvas.transformedBoundingBox(tracer_marker);
+        if (bbox && bbox.y > 0) {
+            var new_y = bbox.y - parseInt(this.getAttribute('y'));
+            this.setAttribute('height', new_y >= 0 ? new_y : height);
+        } else {
+            this.setAttribute('height', height);
+        }
+    };
 
     if (typeof opts.offset == 'undefined' || opts.offset === null) {
         // tracer_marker.offset = 2.5*this._renderer._layer_containers[layerName].track_height;
@@ -2906,8 +2948,12 @@ var addShapeToElement = function(layerName,width,opts) {
         var offset_val = opts.offset - 4/3;
         shape.setAttribute('y',offset_val*(opts.height || 4)*this._renderer._RS);
         shape.setHeight = function(height) {
+            if ( ! this._orig_stroke_width ) {
+                this._orig_stroke_width = parseInt(this.getAttribute('stroke-width'));
+            }
             shape.setAttribute('y', offset_val*height);
             shape.setAttribute('height',height);
+            shape.setAttribute('stroke-width',this._orig_stroke_width/canvas.zoom);
         };
     }
 
@@ -3773,16 +3819,9 @@ clazz.prototype.refresh = function(animated) {
         } else {
             // container.attr({ 'opacity' : '1' });
         }
-        if (container.tracers) {
-            var disp_style = (this.isLayerActive(name) && (this.zoom > 3.6)) ? 'visible' : 'hidden';
-            var height = (1.5 + track_heights / this.zoom )*RS;
-            
-            if(animated) {
-                container.tracers.animate({'visibility' : disp_style , 'y' : (this._axis_height - 1.5)*RS,'height' : height });
-            } else {
-                container.tracers.attr({'visibility' : disp_style , 'y' : (this._axis_height - 1.5)*RS,'height' : height });
-            }
-        }
+
+        var tracer_top = track_heights;
+
         if (container.fixed_track_height) {
 
             var track_height = container.fixed_track_height;
@@ -3813,6 +3852,16 @@ clazz.prototype.refresh = function(animated) {
                 track_heights += container.track_height;
             }
             track_heights += container.track_height + this.trackGap;
+        }
+        if (container.tracers) {
+            var disp_style = (this.isLayerActive(name) && (this.zoom > 3.6)) ? 'visible' : 'hidden';
+            var height = (1.5 + tracer_top / this.zoom )*RS;
+
+            if(animated) {
+                container.tracers.animate({'visibility' : disp_style , 'y' : (this._axis_height - 1.5)*RS,'height' : height });
+            } else {
+                container.tracers.attr({'visibility' : disp_style , 'y' : (this._axis_height - 1.5)*RS,'height' : height });
+            }
         }
 
         container.refresh_zoom();
