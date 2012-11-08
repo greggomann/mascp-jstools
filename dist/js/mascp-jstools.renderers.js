@@ -3857,6 +3857,8 @@ clazz.prototype.refresh = function(animated) {
             }
             track_heights += container.track_height + this.trackGap;
         }
+        container.refresh_zoom();
+
         if (container.tracers) {
             var disp_style = (this.isLayerActive(name) && (this.zoom > 3.6)) ? 'visible' : 'hidden';
             var height = (1.5 + tracer_top / this.zoom )*RS;
@@ -3868,7 +3870,6 @@ clazz.prototype.refresh = function(animated) {
             }
         }
 
-        container.refresh_zoom();
 
     }
     this.wireframe();
