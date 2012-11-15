@@ -58,7 +58,7 @@ MASCP.GelMapReader.Result.prototype.getPeptides = function()
 {
     var content = null;
 
-    if (this.maps[0].peptides) {
+    if (this.maps[0] && this.maps[0].peptides) {
         return this.maps[0].peptides;
     } else {
         return;
