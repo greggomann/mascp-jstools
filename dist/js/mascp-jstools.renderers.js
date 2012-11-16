@@ -1753,7 +1753,7 @@ var SVGCanvas = SVGCanvas || (function() {
             marker.setAttribute('transform','translate('+((cx)*RS)+','+0.5*cy*RS+') scale(1)');
             marker.setAttribute('height', dim.R*RS);
             if (typeof symbol == 'string') {
-                if ( symbol == 'CLO' ){
+                if ( symbol == 'GLO' ){
 		    marker.contentElement = this.long_text_circle(0,0.5*r,1.75*r,symbol,opts);
 		    marker.push(marker.contentElement);
 		}else{
@@ -2753,7 +2753,7 @@ var addElementToLayer = function(layerName) {
         };
     }
     if ( layerName.charAt(0) == 'g' ) {
-	var tracer_marker = canvas.marker(this._index+0.3,10,0.5,'CLO');
+	var tracer_marker = canvas.marker(this._index+0.3,10,0.5,'GLO');
     }else{ 
 	var tracer_marker = canvas.marker(this._index+0.3,10,0.5,layerName.charAt(0).toUpperCase());
     } 

@@ -599,7 +599,7 @@ var SVGCanvas = SVGCanvas || (function() {
             marker.setAttribute('transform','translate('+((cx)*RS)+','+0.5*cy*RS+') scale(1)');
             marker.setAttribute('height', dim.R*RS);
             if (typeof symbol == 'string') {
-                if ( symbol == 'CLO' ){
+                if ( symbol == 'GLO' ){
 		    marker.contentElement = this.long_text_circle(0,0.5*r,1.75*r,symbol,opts);
 		    marker.push(marker.contentElement);
 		}else{
