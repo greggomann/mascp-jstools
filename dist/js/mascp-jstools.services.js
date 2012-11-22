@@ -3058,10 +3058,10 @@ if (typeof module != 'undefined' && module.exports){
             return;
         }
         var auth_settings = { client_id : MASCP.GOOGLE_CLIENT_ID, scope : scope, immediate : true };
-        gapi.auth.authorize({immediate: true},function(){
-        });
+        gapi.auth.authorize({immediate: true},function(){});
         initing_auth = true;
         var user_action = event ? event.which : null;
+        setTimeout(function() {
         gapi.auth.authorize(auth_settings,function(result) {
             if (result && ! result.error) {
                 MASCP.GOOGLE_AUTH_TOKEN = result.access_token;
@@ -3084,6 +3084,7 @@ if (typeof module != 'undefined' && module.exports){
                     cb.call(null,error);
                 });
             } else {
+                initing_auth = false;
                 if ( auth_settings.immediate ) {
                     if (! user_action ) {
                         cback.call(null,{"cause" : "No user event", "authorize" : function(success) {
@@ -3109,6 +3110,7 @@ if (typeof module != 'undefined' && module.exports){
                 }
             }
         });
+        },1);
         return;
     };
 
@@ -3148,6 +3150,10 @@ if (typeof module != 'undefined' && module.exports){
 
     var basic_get_document = get_document;
     get_document = function(doc,etag,callback) {
+        if ( ! doc && callback ) {
+            authenticate(callback);
+            return;
+        }
         if ( ! doc.match(/^spreadsheet/ ) ) {
             console.log("No support for retrieving things that aren't spreadsheets yet");
             return;
