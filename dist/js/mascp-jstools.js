@@ -8168,7 +8168,7 @@ var SVGCanvas = SVGCanvas || (function() {
         extended_elements.push(canvas);
         
         canvas.makeEl = function(name,attributes) {
-            var result = document.createElementNS(svgns,name);
+            var result = canvas.ownerDocument.createElementNS(svgns,name);
             for (var attribute in attributes) {
                 if (attributes.hasOwnProperty(attribute)) {
                     result.setAttribute(attribute, attributes[attribute]);
@@ -8826,7 +8826,7 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
         }
         var canvas;
         if ( document.implementation.hasFeature("http://www.w3.org/TR/SVG11/feature#BasicStructure", "1.1") ) {
-            var native_canvas = document.createElementNS(svgns,'svg');
+            var native_canvas = this.win().document.createElementNS(svgns,'svg');
             native_canvas.setAttribute('width','100%');
             native_canvas.setAttribute('height','100%');
             this._container.appendChild(native_canvas);
