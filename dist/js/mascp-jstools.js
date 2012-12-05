@@ -4580,8 +4580,8 @@ MASCP.PhosphatReader.prototype.setupSequenceRenderer = function(sequenceRenderer
                 icons.push(aa.addBoxOverlay('phosphat_experimental',end,0.5));
             }
 	        jQuery(sequenceRenderer.getAminoAcidsByPosition(this)).each(function() {
-	            this.addToLayer('phosphat_peptide_'+i);
-	            icons = icons.concat(this.addToLayer('phosphat_experimental'));
+	            this.addToLayer('phosphat_peptide_'+i, { 'height' : 20, 'offset': -2.5 });
+	            icons = icons.concat(this.addToLayer('phosphat_experimental',{ 'height' : 20, 'offset': -2.5}));
 	        });
         });
 
@@ -5083,8 +5083,8 @@ MASCP.RippdbReader.prototype.setupSequenceRenderer = function(sequenceRenderer)
                 icons.push(peptide_bits.addToLayer('prippdb_experimental'));
 
                 for (var k = 0; k < peps[i].positions.length; k++ ) {
-                    icons = icons.concat(peptide_bits[peps[i].positions[k] - 1].addToLayer('prippdb_experimental'));
-                    peptide_bits[peps[i].positions[k] - 1].addToLayer(layer_name);
+                    icons = icons.concat(peptide_bits[peps[i].positions[k] - 1].addToLayer('prippdb_experimental',{ 'height' : 20, 'offset': -2.5 }));
+                    peptide_bits[peps[i].positions[k] - 1].addToLayer(layer_name,{ 'height' : 20, 'offset': -2.5 });
                 }
 
             }
@@ -5271,7 +5271,7 @@ MASCP.SnpReader.prototype.setupSequenceRenderer = function(renderer) {
                 if (pos > renderer.sequence.length) {
                     pos = renderer.sequence.length;
                 }
-                var ann = renderer.getAA(pos).addAnnotation('insertions_controller',1, { 'border' : 'rgb(150,0,0)', 'content' : ins[i].delta, 'angle': 'auto' });
+                var ann = renderer.getAA(pos).addAnnotation('insertions_controller',1, { 'border' : 'rgb(150,0,0)', 'content' : ins[i].delta, 'angle': 0 });
                 if (! ann._click) {
                     ann.addEventListener('click',(function(posn) {
                         var visible = false;
@@ -9753,7 +9753,7 @@ var addAnnotationToLayer = function(layerName,width,opts) {
 
     var height = opts.height || this._renderer._layer_containers[layerName].track_height;
 
-    var offset = this._renderer._RS * height / 2; //this._renderer._RS * height / 2;
+    var offset = height / 2; //this._renderer._RS * height / 2;
     var blob = all_annotations[layerName][blob_id] ? all_annotations[layerName][blob_id] : canvas.growingMarker(0,0,opts.content,opts);
 
     if (opts.angle == 'auto') {
@@ -9781,7 +9781,7 @@ var addAnnotationToLayer = function(layerName,width,opts) {
         blob._value = 0;
         this._renderer._layer_containers[layerName].push(blob);
         if (typeof opts.offset == 'undefined' || opts.offset === null) {
-            blob.offset = 2.5*height;
+            blob.offset = 0*height;
         } else {
             blob.offset = opts.offset;
         }
