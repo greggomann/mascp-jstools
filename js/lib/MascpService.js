@@ -843,7 +843,7 @@ base.retrieve = function(agi,callback)
                             if (MASCP.events) {
                                 MASCP.events.emit("ready");
                             }
-                            if (MASCP.ready) {
+                            if (MASCP.ready && (MASCP.ready != true)) {
                                 MASCP.ready();
                             } else {
                                 MASCP.ready = true;
@@ -854,7 +854,7 @@ base.retrieve = function(agi,callback)
                     if (MASCP.events) {
                         MASCP.events.emit("ready");
                     }
-                    if (MASCP.ready) {
+                    if (MASCP.ready && (MASCP.ready != true)) {
                         MASCP.ready();
                     } else {
                         MASCP.ready = true;
@@ -897,7 +897,7 @@ base.retrieve = function(agi,callback)
         }
     }
 
-    if (typeof idb != 'undefined') {
+    if ((typeof idb != 'undefined') && (idb != true)) {
         var transaction_store_db;
         var transaction_find_latest;
         var transaction_data = [];
@@ -1506,7 +1506,7 @@ base.retrieve = function(agi,callback)
             MASCP.events.emit('ready');
         }
         setTimeout(function() {
-            if (MASCP.ready) {
+            if (MASCP.ready && (MASCP.ready != true)) {
                 MASCP.ready();
             } else {
                 MASCP.ready = true;

@@ -116,7 +116,7 @@ MASCP.P3dbReader.prototype.setupSequenceRenderer = function(sequenceRenderer)
         var res = this.result;
         var peps = res.getPeptides();
         if (peps.length > 0) {
-            MASCP.registerLayer('p3db_controller',{ 'fullname' : 'P3DB (mod)', 'color' : color });
+            MASCP.registerLayer('p3db_controller',{ 'fullname' : 'P3DB (mod)', 'color' : color, 'hover_peptides' : true });
         }
         for(var i = 0; i < peps.length; i++) {
             var peptide = peps[i].sequence;

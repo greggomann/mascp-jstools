@@ -79,7 +79,7 @@ MASCP.GlycoModReader.prototype.setupSequenceRenderer = function(sequenceRenderer
         var icons = [];
 
         if (peps.length > 0) {
-            MASCP.registerLayer(overlay_name,{ 'fullname' : 'GlycoMod (mod)', 'color' : '#ff00ff', 'css' : css_block });
+            MASCP.registerLayer(overlay_name,{ 'fullname' : 'GlycoMod (mod)', 'color' : '#ff00ff', 'css' : css_block, 'hover_peptides' : true });
 
             MASCP.registerGroup('glycomod_peptides', {'fullname' : 'Glycosilation Publication ', 'hide_member_controllers' : true, 'hide_group_controller' : true, 'color' : '#ff00ff' });
             if (sequenceRenderer.createGroupController) {

@@ -226,7 +226,7 @@ MASCP.Pep2ProReader.prototype._groupSummary = function(sequenceRenderer)
 
     var css_block = ' .overlay { display: none; } .tracks .active { fill: #000099; } .inactive { display: none; } .active .overlay { display: block; top: 0px; background: #000099; } ';
     
-    MASCP.registerLayer(overlay_name,{ 'fullname' : 'Pep2Pro MS/MS', 'color' : '#000099', 'css' : css_block });
+    MASCP.registerLayer(overlay_name,{ 'fullname' : 'Pep2Pro MS/MS', 'color' : '#000099', 'css' : css_block, 'hover_peptides' : true });
 
 
     var an_agi = this.result.agi;
