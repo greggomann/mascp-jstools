@@ -97,7 +97,7 @@ MASCP.RippdbReader.prototype.setupSequenceRenderer = function(sequenceRenderer)
                 continue;
             }
             var layer_name = 'prippdb_spectrum_'+spec.spectrum_id;
-            MASCP.registerLayer(layer_name, { 'fullname': 'Spectrum '+spec.spectrum_id, 'group' : 'prippdb_peptides', 'color' : '#666666', 'css' : css_block });
+            MASCP.registerLayer(layer_name, { 'fullname': 'Spectrum '+spec.spectrum_id, 'group' : 'prippdb_peptides', 'color' : '#666666', 'css' : css_block, 'hover_peptides' : true });
             for(var i = 0; i < peps.length; i++) {
                 var peptide = peps[i].sequence;
                 var peptide_bits = sequenceRenderer.getAminoAcidsByPeptide(peptide);

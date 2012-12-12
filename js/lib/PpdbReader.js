@@ -153,7 +153,7 @@ MASCP.PpdbReader.prototype.setupSequenceRenderer = function(sequenceRenderer)
         var experiments = this.result.getExperiments();
         for(var i = 0; i < experiments.length; i++) {
             var layer_name = 'ppdb_experiment'+experiments[i];
-            MASCP.registerLayer(layer_name, { 'fullname': 'Experiment '+experiments[i], 'group' : 'ppdb', 'color' : '#aa9900', 'css' : css_block });
+            MASCP.registerLayer(layer_name, { 'fullname': 'Experiment '+experiments[i], 'group' : 'ppdb', 'color' : '#aa9900', 'css' : css_block, 'hover_peptides' : true });
             MASCP.getLayer(layer_name).href = 'http://ppdb.tc.cornell.edu/dbsearch/searchsample.aspx?exprid='+experiments[i];
             for (var j = 0 ; j < peps.length; j++) {
                 var peptide = peps[j];

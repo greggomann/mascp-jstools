@@ -264,7 +264,7 @@ MASCP.PhosphatReader.prototype.setupSequenceRenderer = function(sequenceRenderer
             sequenceRenderer.createGroupController('phosphat_experimental','phosphat_peptides');
         }
         jQuery(exp_peptides).each(function(i) {
-            MASCP.registerLayer('phosphat_peptide_'+i, { 'fullname': 'PhosPhAt MS/MS', 'group':'phosphat_peptides', 'color' : '#000000', 'css' : '.active { background: #999999; color: #000000; } .tracks .active { background: #000000; fill: #000000; } .inactive { display: none; }' });
+            MASCP.registerLayer('phosphat_peptide_'+i, { 'fullname': 'PhosPhAt MS/MS', 'group':'phosphat_peptides', 'color' : '#000000', 'css' : '.active { background: #999999; color: #000000; } .tracks .active { background: #000000; fill: #000000; } .inactive { display: none; }', 'hover_peptides' : true });
 
             var start = this.shift();
             var end = this.shift();

@@ -102,7 +102,7 @@ MASCP.GelMapReader.prototype.setupSequenceRenderer = function(sequenceRenderer)
     this.bind('resultReceived', function() {
         for (var maps = this.result.maps, j = maps.length - 1; j >= 0; j--) {
             var a_map = maps[j];
-            MASCP.registerLayer('gelmap_map_'+a_map.id, { 'fullname': a_map.title, 'group' : 'gelmap_experimental', 'color' : '#aaaaff', 'css' : css_block });
+            MASCP.registerLayer('gelmap_map_'+a_map.id, { 'fullname': a_map.title, 'group' : 'gelmap_experimental', 'color' : '#aaaaff', 'css' : css_block, 'hover_peptides' : true });
             MASCP.getLayer('gelmap_map_'+a_map.id).href = a_map.url;
             var peps = sort_unique(maps[j].peptides);
 
