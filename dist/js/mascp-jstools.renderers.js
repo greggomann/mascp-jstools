@@ -1925,7 +1925,12 @@ var SVGCanvas = SVGCanvas || (function() {
 
             marker_group.push(back);
             var text = this.text(0,dim.CY-0.5*dim.R,txt);
-            text.setAttribute('font-size',r*RS);
+            if (txt.length >= 3) {
+                var font_size = r*RS*0.8;
+            } else {
+                var font_size = r*RS;
+            }
+            text.setAttribute('font-size',font_size);
             text.setAttribute('font-weight','bolder');
             text.setAttribute('fill','#ffffff');
             text.setAttribute('style','font-family: sans-serif; text-anchor: middle;');
@@ -2097,7 +2102,8 @@ var SVGCanvas = SVGCanvas || (function() {
         };
     });
 
-})();/**
+})();
+/**
  *  @fileOverview   Basic classes and definitions for an SVG-based sequence renderer
  */
 
