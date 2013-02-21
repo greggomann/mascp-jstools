@@ -44,7 +44,7 @@ MASCP.ProteotypicReader.Result.prototype.getPeptides = function()
     if (this._peptides) {
         return this._peptides;
     }
-
+    
     if (! this._raw_data || ! this._raw_data.peptides ) {
         return [];
     }
@@ -79,16 +79,6 @@ MASCP.ProteotypicReader.prototype.setupSequenceRenderer = function(sequenceRende
         }
                 
         var peps = this.result.getPeptides();
-
-        // Append peptide sequences to master list for modhunter
-        // Predictions for each experimental type are put in separate containers
-        for (var k = 0; k < peps.length; k++) {
-            // If a container for this exp type doesn't exist, create it
-            if (sequenceRenderer._peptide_sequences.hasOwnProperty('proteotypic'+peps[k].exp) == false) {
-                sequenceRenderer._peptide_sequences['proteotypic'+peps[k].exp] = [];
-            }
-            sequenceRenderer._peptide_sequences['proteotypic'+peps[k].exp].push(peps[k].sequence);
-        }
 
         var exps_done = '';
 		for(var i = 0; i < peps.length; i++) {

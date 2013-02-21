@@ -632,8 +632,8 @@ MASCP.CondensedSequenceRenderer.prototype.createModhunterLayer = function() {
     }
 
     MASCP.registerLayer('modhunter',{ 'fullname' : 'Mod Hunter','color' : '#990000' });
-        
-    var rect = this._canvas.rect(0,0,this._sequence_els.length,2);
+
+    var rect = this._canvas.rect(0,0,this.sequence.length,2);
     rect.setAttribute('fill','url(#mod_gradient)');
 
     this._layer_containers.modhunter.push(rect);
@@ -642,23 +642,21 @@ MASCP.CondensedSequenceRenderer.prototype.createModhunterLayer = function() {
 };
 
 /**
- * Function to create a gradient object that properly colors the modhunter
+ * Function to create a gradient object that colors the modhunter according to residue scores
  */
 MASCP.CondensedSequenceRenderer.prototype.setModhunterGradient = function(modhunterObject) {
-
     stopObject = {}
+    seqLength = this.sequence.length;
+
+    // Populate stopObject with modhunter scores to pass to canv.mod_gradient
+    for (var i = 0; i < seqLength; i++) {
+        stopObject[i] = modhunterObject.sequence[i].score;
+    }
     
-    for (var i = 0; i < modhunterObject['whole_sequence'].length; i++) {
-        stopObject[i] = 
-        // Create gradient object
-        var canv = this._canvas;
-        var defs = canv.parentNode.ownerDocument.getElementsByTagNameNS(svgns, 'defs')[0];
-        defs.appendChild(canv.mod_gradient('mod_gradient', stopObject, seqLength));
-    }
-    else {
-        // Remove modhunter if no peptides are present in the database
-        this.removeTrack(MASCP.getLayer('modhunter'));
-    }
+    // Create gradient object
+    var canv = this._canvas;
+    var defs = canv.parentNode.ownerDocument.getElementsByTagNameNS(svgns, 'defs')[0];
+    defs.appendChild(canv.mod_gradient('mod_gradient', stopObject, seqLength));
 
     return this;
 };

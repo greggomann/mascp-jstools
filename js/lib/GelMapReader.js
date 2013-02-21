@@ -57,12 +57,14 @@ MASCP.GelMapReader.Result = MASCP.GelMapReader.Result;
 MASCP.GelMapReader.Result.prototype.getPeptides = function()
 {
     var content = null;
-
+    var results = [];
     if (this.maps[0] && this.maps[0].peptides) {
-        return this.maps[0].peptides;
-    } else {
-        return;
+        var results = [];
+        for (var pep in this.maps[0].peptides) {
+            results.push({'sequence' : pep });
+        }
     }
+    return results;
 };
 
 MASCP.GelMapReader.Result.prototype._cleanSequence = function(sequence)

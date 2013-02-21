@@ -72,7 +72,14 @@ MASCP.Pep2ProReader.Result.prototype.tissues = function()
 
 MASCP.Pep2ProReader.Result.prototype.getPeptides = function()
 {
-    return this._peptides;
+    var results = [];
+
+    if (this._raw_data && this._raw_data.peptides) {
+        for (pep in this._raw_data.peptides) {
+            results.push({ 'sequence' : this._raw_data.peptides[pep].sequence, 'qty_spectra' : this._raw_data.peptides[pep].qty_spectra });
+        }
+    }
+    return results;
 };
 
 
@@ -117,16 +124,11 @@ MASCP.Pep2ProReader.Result.prototype._populate_peptides = function(data)
     this.sequence = data.sequence;
     this._peptides = [];
 
-    // Create _peptide_sequences list for Modhunter
-    this._peptide_sequences = [];
-
     for (var i = 0; i < data.peptides.length; i++ ) {
         var a_peptide = data.peptides[i];
         this._peptides.push(a_peptide.sequence);
         var peptide_position = a_peptide.position+'-'+(parseInt(a_peptide.position,10)+parseInt(a_peptide.sequence.length,10));
         for (var j = 0; j < a_peptide.tissues.length; j++ ) {
-            // Add peptides to list for Modhunter
-            this._peptide_sequences.push(a_peptide.sequence);
 
             var a_tissue = a_peptide.tissues[j];
             if (! this.peptide_counts_by_tissue[a_tissue['PO:tissue']]) {

@@ -378,10 +378,9 @@ var SVGCanvas = SVGCanvas || (function() {
         /*  Creates gradient for the modhunter track
         *  Arguments:
         *       id: string containing id of gradient
-        *       locations: an array of two-member arrays containing start and end
-        *                   points of each gradient, from 0-100 percent
-        *       maxRating: integer from 0-9 representing max confidence rating of
-        *                   suggested modification sites
+        *       stopObject: object literal of format
+        *           { residue_id : modhunter_score, ... }
+        *       seqLength: length of protein sequence
         */
         canvas.mod_gradient = function(id, stopObject, seqLength) {
             var gradient = this.makeEl('linearGradient',{
@@ -391,9 +390,9 @@ var SVGCanvas = SVGCanvas || (function() {
                 'y1':'0%',
                 'y2':'0%'
             });
-
+            
             for (var stop in stopObject) {
-                var thisPercent = stop / seqLength;
+                var thisPercent = (parseInt(stop)+1) / seqLength;
                 var colorStr = '' + 255-(Math.round((stopObject[stop]/100)*255));
 
                 gradient.appendChild(this.makeEl('stop',{
