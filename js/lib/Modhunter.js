@@ -18,7 +18,7 @@ MASCP.Modhunter.prototype.loadSequence = function(modObject, inputSequence) {
     // Initialize the sequence for the Modhunter
     // Whole protein sequence is needed later to find peptide indeces
     modObject['whole_sequence'] = inputSequence;
-
+    modObject['predicted_total'] = 0;
     modObject['peptide_total'] = 0;
 
     for (var i = 0; i < inputSequence.length; i++) {
@@ -31,7 +31,6 @@ MASCP.Modhunter.prototype.loadSequence = function(modObject, inputSequence) {
         modObject.sequence[i]['predicted_coverage'] = 0;
         modObject.sequence[i]['reader_coverage'] = 0;
         modObject.sequence[i]['score'] = 0;
-
     }
 };
 
@@ -46,7 +45,7 @@ MASCP.Modhunter.prototype.countCoverage = function(modObject, reader) {
     //          count_fieldname == name of field in peptide object containing # of experiments/spectral count
     //          count_type_flag == 'length' if peptide count is given by len(count_fieldname)
     //          count_type_flag == 'value' if peptide count is given by the value of count_fieldname
-    //          norm_factor == normalization factor for peptide count
+    //          norm_factor == normalization factor for peptide count in each database
     var readerList = { 'MASCP.PpdbReader': ['experiments', 'length', 0.00732903204172],
                     'MASCP.AtPeptideReader': ['tissues', 'length', 0.00277509729109],
                     'MASCP.Pep2ProReader': ['qty_spectra', 'value', 0.00229551940475],
@@ -96,6 +95,7 @@ MASCP.Modhunter.prototype.countCoverage = function(modObject, reader) {
                 // Check for predicted peptide vs. experimental peptide
                 if (reader.toString() == 'MASCP.ProteotypicReader') {
                     modObject.sequence[p].predicted_coverage += 1;
+                    modObject.predicted_total += 1;
                 } else {
                     // Retrieve spectral count for experimental peptides, if available
                     var pepCount = 1;
@@ -105,6 +105,7 @@ MASCP.Modhunter.prototype.countCoverage = function(modObject, reader) {
                     else if (readerList[reader.toString()][0] == 'value') {
                         pepCount = parseInt(getPeps[pep][readerList[reader.toString()][0]]);
                     }
+                    modObject.peptide_total += pepCount;
                     modObject.sequence[p].gator_coverage += pepCount;
                     // If modObject residue's reader_coverage hasn't yet been incremented, do so now
                     if (rdrCoverageList.indexOf(p) < 0) {
