@@ -645,7 +645,7 @@ MASCP.CondensedSequenceRenderer.prototype.createModhunterLayer = function() {
  * Function to create a gradient object that colors the modhunter according to residue scores
  */
 MASCP.CondensedSequenceRenderer.prototype.setModhunterGradient = function(modhunterObject) {
-    stopObject = {}
+    stopObject = {};
     seqLength = this.sequence.length;
 
     // Populate stopObject with modhunter scores to pass to canv.mod_gradient
