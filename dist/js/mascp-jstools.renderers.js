@@ -2892,6 +2892,15 @@ var addBoxOverlayToElement = function(layerName,width,fraction) {
     rect.setAttribute('fill',MASCP.layers[layerName].color);
     rect.position_start = this._index;
     rect.position_end = this._index + width;
+    rect.addEventListener('mouseout',function() {
+        if (! MASCP.getLayer(layerName).hover_peptides ) {
+            return;
+        }
+        if (renderer.activeCallout) {
+            renderer.activeCallout.clear();
+            renderer.activeCallout = null;
+        }
+    })
     return rect;
 };
 
