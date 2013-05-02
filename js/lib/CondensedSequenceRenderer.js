@@ -633,7 +633,7 @@ MASCP.CondensedSequenceRenderer.prototype.createModhunterLayer = function() {
 
     MASCP.registerLayer('modhunter',{ 'fullname' : 'Mod Hunter','color' : '#990000' });
 
-    var rect = this._canvas.rect(0,0,this.sequence.length,2);
+    var rect = this._canvas.rect(-0.25,0,this.sequence.length,2);
     rect.setAttribute('fill','url(#mod_gradient)');
 
     this._layer_containers.modhunter.push(rect);

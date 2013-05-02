@@ -79,9 +79,8 @@ MASCP.SnpReader.prototype.setupSequenceRenderer = function(renderer) {
         var insertions_layer;
 
         var accessions = a_result.getAccessions();
-        
-        while (accessions.length > 0) {
 
+        while (accessions.length > 0) {
             var acc = accessions.shift();
             var acc_fullname = acc;
 
@@ -94,7 +93,6 @@ MASCP.SnpReader.prototype.setupSequenceRenderer = function(renderer) {
                 insertions_layer = renderer.registerLayer('insertions_controller',{'fullname' : 'nsSNPs','color' : '#ff0000'});                
             }
 
-
             var in_layer = 'all'+acc;
             var group_layer = acc.indexOf('_') >= 0 ? (acc.split('_')[0]).toUpperCase() : null;
 
@@ -106,7 +104,7 @@ MASCP.SnpReader.prototype.setupSequenceRenderer = function(renderer) {
                 }
                 acc_fullname = acc.replace(/^[^_]+_/,'');
             }
-
+            
             var ins = [];
             var outs = [];
 
@@ -118,7 +116,7 @@ MASCP.SnpReader.prototype.setupSequenceRenderer = function(renderer) {
                 }
                 
             }
-
+            
             var acc_layer = renderer.registerLayer(in_layer, {'fullname' : acc_fullname, 'group' : group_layer || 'insertions' });
             
             (function(this_acc) {
@@ -147,7 +145,6 @@ MASCP.SnpReader.prototype.setupSequenceRenderer = function(renderer) {
                 outs.push( { 'index' : diffs[i][0] + 1, 'delta' : diffs[i][1] });
                 ins.push( { 'insertBefore' : diffs[i][0] + 1, 'delta' : diffs[i][2] });
             }
-
             for (i = ins.length - 1; i >= 0 ; i-- ) {
                 var pos = ins[i].insertBefore - 1;
                 if (pos > renderer.sequence.length) {
@@ -172,7 +169,6 @@ MASCP.SnpReader.prototype.setupSequenceRenderer = function(renderer) {
                     ann._click = true;
                 }
             }
-        
         }
         
         if (MASCP.getGroup('insertions').size() > 0) {

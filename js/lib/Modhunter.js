@@ -144,31 +144,29 @@ MASCP.Modhunter.prototype.calcScores = function() {
 
     // Set protein abundance score
     var abScore = (this.peptide_total / this.tryptic_total) * 100;
+    
+    // Find appropriate bin for this abundance score, giving us the actual abundance score
+    var i = 0;
     while (binMap[i] < abScore && i < 99) {
         i++;
     }
     this.abundance_score = i;
     jQuery('#abundance').text(i);
 
-    // Function to convert a sequence index to a percentage
-    // Returned value is a floating point between 0 and 1
-    var toPercent = function(index) {
-        return Math.min((index / seqLength), 1);
-    };
-
-    // Set maximum confidence of modification suggestions based on total # of peptides in GATOR
-    // var maxRating = Math.min((this.peptide_total / 15), 1);
-    
+    // Test if this AGI meets minimum abundance score requirement
+    var minAb = (this.abundance_score >= 20);
     // Iterate through amino acids and compute modhunter rating from 0-100 for each
     for (var q = 0; q < seqLength; q++) {
-        var thisRating = 100;
-        var predictedBool = 0;
-        var readerDec = (this.sequence[q].reader_coverage < 2) ? 0.5 : 1;
-        // var gatorDec = Math.max(1 - (this.sequence[q].gator_coverage / 4), 0);
-        if (this.sequence[q].predicted_coverage > 0) { predictedBool = 1; }
-        thisRating = thisRating * predictedBool;
-        // thisRating = thisRating * maxRating;
-        this.sequence[q].score = thisRating;
+        if (minAb) {
+            var thisRating = 100;
+            var predictedBool = 0;
+            var readerDec = (this.sequence[q].reader_coverage >= 2) ? 0 : 1.0;
+            var gatorDec = Math.max(1.0 - (this.sequence[q].gator_coverage / 3.0), 0);
+            if (this.sequence[q].predicted_coverage > 0) { predictedBool = 1; }
+            thisRating = thisRating * predictedBool * readerDec * gatorDec;
+            this.sequence[q].score = thisRating;
+        } else {
+            this.sequence[q].score = 0;
+        }
     }
-
 };
