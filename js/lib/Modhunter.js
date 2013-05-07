@@ -112,10 +112,10 @@ MASCP.Modhunter.prototype.countCoverage = function(modObject, reader) {
                 } else {
                     // Retrieve spectral count for experimental peptides, if available
                     var pepCount = 1;
-                    if (readerList[reader.toString()][0] == 'length') {
+                    if (readerList[reader.toString()][1] == 'length') {
                         pepCount = getPeps[pep][readerList[reader.toString()][0]].length;
                     }
-                    else if (readerList[reader.toString()][0] == 'value') {
+                    else if (readerList[reader.toString()][1] == 'value') {
                         pepCount = parseInt(getPeps[pep][readerList[reader.toString()][0]]);
                     }
                     if (firstLoop == true) {
