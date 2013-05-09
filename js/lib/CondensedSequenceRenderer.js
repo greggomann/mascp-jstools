@@ -645,8 +645,9 @@ MASCP.CondensedSequenceRenderer.prototype.fillModhunter = function(modhunterObje
     var seqLength = this.sequence.length;
 
     // colorMap maps integers from 0 to 10 to a yellow-to-red gradient for modhunter coloring
+    //var colorMap = ['#FFFFFF','#FFF000','#FFCB00','#FFC000','#FFB000','#FF9C00','#FF8900','#FF7200','#FF5C00','#FF4700','#FF0000'];
     var colorMap = ['#FFFFFF','#FFF000','#FFCB00','#FFC000','#FFB000','#FF9C00','#FF8900','#FF7200','#FF5C00','#FF4700','#FF0000'];
-    
+
     var leftIndex = -1;
     var storedScore = 0;
     var thisScore = -1;
@@ -706,7 +707,7 @@ MASCP.CondensedSequenceRenderer.prototype.fillModhunter = function(modhunterObje
         var thisColor = colorMap[Math.round(scr/10)];
         // If abundance is low, make shading lighter
         if (ab < 60) {
-            scaleVar = ((60 - ab) / 60);
+            scaleVar = ((60 - ab) / 75);
             hslColor = rgbToHsl(thisColor.slice(1));
             thisColor = '#' + hslToRgb(hslColor[0], hslColor[1], Math.min(hslColor[2]+scaleVar,1));
         }
