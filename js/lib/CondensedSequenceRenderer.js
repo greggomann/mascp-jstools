@@ -635,11 +635,6 @@ MASCP.CondensedSequenceRenderer.prototype.createModhunterLayer = function() {
     MASCP.registerLayer('modhunter',{ 'fullname' : 'ModHunter','color' : '#990000' });
     this._layer_containers.modhunter.track_height = 6;
 
-    //var rect = this._canvas.rect(-0.25,0,this.sequence.length,4);
-    //rect.setAttribute('stroke','#000000');
-    //rect.setAttribute('fill','transparent');
-    //this._layer_containers.modhunter.push(rect);
-    
     return this;
 };
 
@@ -647,42 +642,95 @@ MASCP.CondensedSequenceRenderer.prototype.createModhunterLayer = function() {
  * Function to fill the modhunter with rects that color the modhunter according to residue scores
  */
 MASCP.CondensedSequenceRenderer.prototype.fillModhunter = function(modhunterObject) {
-    //var stopObject = {};
     var seqLength = this.sequence.length;
+
     // colorMap maps integers from 0 to 10 to a yellow-to-red gradient for modhunter coloring
-    //var colorMap = ['#FFFFFF', '#FFFEC1', '#E8E178', '#FFE766', '#FFCB46', '#FFB632', '#FF9223', '#FF7A20', '#FF6117', '#FF5014', '#E80000'];
     var colorMap = ['#FFFFFF','#FFF000','#FFCB00','#FFC000','#FFB000','#FF9C00','#FF8900','#FF7200','#FF5C00','#FF4700','#FF0000'];
-    // Create rect objects to color the modhunter
+    
     var leftIndex = -1;
     var storedScore = 0;
     var thisScore = -1;
 
-    // insertRect adds a rect to the modhunter layer from 'lft' to 'rt' with a score of 'scr'
-    var insertRect = function(lft, rt, scr) {
-        var rect = this._canvas.rect(lft, 0, rt-lft, 4);
-        rect.setAttribute('stroke', colorMap[Math.round(scr/10)]);
-        rect.setAttribute('fill', colorMap[Math.round(scr/10)]);
-        this._layer_containers.modhunter.push(rect);
+    // Functions to convert from RGB>HSL and HSL>RGB colors for purposes of shading when abundance is low
+    function rgbToHsl(rgb){
+        var r = parseInt(rgb.slice(0,2),16) / 255;
+        var g = parseInt(rgb.slice(2,4),16) / 255;
+        var b = parseInt(rgb.slice(4),16) / 255;
+        var max = Math.max(r, g, b), min = Math.min(r, g, b);
+        var h, s, l = (max + min) / 2;
+
+        if(max == min){
+            h = s = 0; // achromatic
+        }else{
+            var d = max - min;
+            s = l > 0.5 ? d / (2 - max - min) : d / (max + min);
+            switch(max){
+                case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+                case g: h = (b - r) / d + 2; break;
+                case b: h = (r - g) / d + 4; break;
+            }
+            h /= 6;
+        }
+
+        return [h, s, l];
     }
 
+    function hslToRgb(h, s, l){
+        var r, g, b;
+
+        if(s == 0){
+            r = g = b = l; // achromatic
+        }else{
+            function hue2rgb(p, q, t){
+                if(t < 0) t += 1;
+                if(t > 1) t -= 1;
+                if(t < 1/6) return p + (q - p) * 6 * t;
+                if(t < 1/2) return q;
+                if(t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                return p;
+            }
+
+            var q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+            var p = 2 * l - q;
+            r = hue2rgb(p, q, h + 1/3);
+            g = hue2rgb(p, q, h);
+            b = hue2rgb(p, q, h - 1/3);
+        }
+
+        return Math.round(r * 255).toString(16) + Math.round(g * 255).toString(16) + Math.round(b * 255).toString(16);
+    }
+
+    // insertRect adds a rect to the modhunter layer from 'lft' to 'rt' with a score of 'scr' and abundance 'ab'
+    var insertRect = function(lft, rt, scr, ab) {
+        var rect = this._canvas.rect(lft, 0, rt-lft, 4);
+        var thisColor = colorMap[Math.round(scr/10)];
+        // If abundance is low, make shading lighter
+        if (ab < 60) {
+            scaleVar = ((60 - ab) / 60);
+            console.log(scaleVar);
+            console.log(thisColor);
+            hslColor = rgbToHsl(thisColor.slice(1));
+            thisColor = '#' + hslToRgb(hslColor[0], hslColor[1], Math.min(hslColor[2]+scaleVar,1));
+            thisColor = shade(thisColor, scaleVar);
+            console.log(thisColor);
+        }
+        rect.setAttribute('stroke', thisColor);
+        rect.setAttribute('fill', thisColor);
+        this._layer_containers.modhunter.push(rect);
+    }
+    
     for (var i = 0; i < seqLength; i++) {
         thisScore = modhunterObject.sequence[i].score;
-        console.log(thisScore);
         if (thisScore != storedScore) {
             if (storedScore > 0) {
-                insertRect.call(this, leftIndex, i, storedScore);
+                insertRect.call(this, leftIndex, i, storedScore, modhunterObject.abundance_score);
             }
             leftIndex = i;
             storedScore = thisScore;
         } else if (i+1 == seqLength && storedScore > 0) {
-            insertRect.call(this, leftIndex, i, storedScore);
+            insertRect.call(this, leftIndex, i, storedScore, modhunterObject.abundance_score);
         }
     }
-    
-    // Create gradient object
-    //var canv = this._canvas;
-    //var defs = canv.parentNode.ownerDocument.getElementsByTagNameNS(svgns, 'defs')[0];
-    //defs.appendChild(canv.mod_gradient('mod_gradient', stopObject, seqLength));
 
     return this;
 };

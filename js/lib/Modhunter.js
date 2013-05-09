@@ -149,7 +149,6 @@ MASCP.Modhunter.prototype.calcScores = function() {
 
     // Iterate through amino acids and compute modhunter rating from 0-100 for each
     for (var q = 0; q < seqLength; q++) {
-        var abScale = this.abundance_score / 100;
         var gatScore = Math.max(6 - this.sequence[q].gator_coverage, 0) / 6;
         var predScore = (this.sequence[q].predicted_coverage > 0) ? 1 : 0;
         var modScore = (gatScore > 0) ? Math.min(Math.round(gatScore * 75) + (predScore * 25), 100) : 0;
