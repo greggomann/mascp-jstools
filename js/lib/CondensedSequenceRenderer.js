@@ -619,6 +619,7 @@ MASCP.CondensedSequenceRenderer.prototype.createModhunterLayer = function() {
     var RS = this._RS;
 
     var canvas = this._canvas;
+    var seqLength = this.sequence.length;
 
     if ( ! canvas ) {
         var orig_func = arguments.callee;
@@ -631,32 +632,57 @@ MASCP.CondensedSequenceRenderer.prototype.createModhunterLayer = function() {
         return;
     }
 
-    MASCP.registerLayer('modhunter',{ 'fullname' : 'Mod Hunter','color' : '#990000' });
+    MASCP.registerLayer('modhunter',{ 'fullname' : 'ModHunter','color' : '#990000' });
+    this._layer_containers.modhunter.track_height = 6;
 
-    var rect = this._canvas.rect(-0.25,0,this.sequence.length,2);
-    rect.setAttribute('fill','url(#mod_gradient)');
-
-    this._layer_containers.modhunter.push(rect);
+    //var rect = this._canvas.rect(-0.25,0,this.sequence.length,4);
+    //rect.setAttribute('stroke','#000000');
+    //rect.setAttribute('fill','transparent');
+    //this._layer_containers.modhunter.push(rect);
     
     return this;
 };
 
 /**
- * Function to create a gradient object that colors the modhunter according to residue scores
+ * Function to fill the modhunter with rects that color the modhunter according to residue scores
  */
-MASCP.CondensedSequenceRenderer.prototype.setModhunterGradient = function(modhunterObject) {
-    stopObject = {};
-    seqLength = this.sequence.length;
+MASCP.CondensedSequenceRenderer.prototype.fillModhunter = function(modhunterObject) {
+    //var stopObject = {};
+    var seqLength = this.sequence.length;
+    // colorMap maps integers from 0 to 10 to a yellow-to-red gradient for modhunter coloring
+    //var colorMap = ['#FFFFFF', '#FFFEC1', '#E8E178', '#FFE766', '#FFCB46', '#FFB632', '#FF9223', '#FF7A20', '#FF6117', '#FF5014', '#E80000'];
+    var colorMap = ['#FFFFFF','#FFF000','#FFCB00','#FFC000','#FFB000','#FF9C00','#FF8900','#FF7200','#FF5C00','#FF4700','#FF0000'];
+    // Create rect objects to color the modhunter
+    var leftIndex = -1;
+    var storedScore = 0;
+    var thisScore = -1;
 
-    // Populate stopObject with modhunter scores to pass to canv.mod_gradient
+    // insertRect adds a rect to the modhunter layer from 'lft' to 'rt' with a score of 'scr'
+    var insertRect = function(lft, rt, scr) {
+        var rect = this._canvas.rect(lft, 0, rt-lft, 4);
+        rect.setAttribute('stroke', colorMap[Math.round(scr/10)]);
+        rect.setAttribute('fill', colorMap[Math.round(scr/10)]);
+        this._layer_containers.modhunter.push(rect);
+    }
+
     for (var i = 0; i < seqLength; i++) {
-        stopObject[i] = modhunterObject.sequence[i].score;
+        thisScore = modhunterObject.sequence[i].score;
+        console.log(thisScore);
+        if (thisScore != storedScore) {
+            if (storedScore > 0) {
+                insertRect.call(this, leftIndex, i, storedScore);
+            }
+            leftIndex = i;
+            storedScore = thisScore;
+        } else if (i+1 == seqLength && storedScore > 0) {
+            insertRect.call(this, leftIndex, i, storedScore);
+        }
     }
     
     // Create gradient object
-    var canv = this._canvas;
-    var defs = canv.parentNode.ownerDocument.getElementsByTagNameNS(svgns, 'defs')[0];
-    defs.appendChild(canv.mod_gradient('mod_gradient', stopObject, seqLength));
+    //var canv = this._canvas;
+    //var defs = canv.parentNode.ownerDocument.getElementsByTagNameNS(svgns, 'defs')[0];
+    //defs.appendChild(canv.mod_gradient('mod_gradient', stopObject, seqLength));
 
     return this;
 };

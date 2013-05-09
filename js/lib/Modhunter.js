@@ -90,12 +90,6 @@ MASCP.Modhunter.prototype.countCoverage = function(modObject, reader) {
     //      already been incremented for the current reader
     var rdrCoverageList = [];
     
-    var incCoverage = function(propName, value, leftIndex, rightIndex) {
-        for (var i = leftIndex; i < rightIndex; i++) {
-            modObject.sequence[p][propName] += value;
-        }
-    };
-
     if (getPeps.length > 0) {
         // For each peptide, increment coverage properties for the residues within the peptide
         for (var pep in getPeps) {
@@ -145,7 +139,7 @@ MASCP.Modhunter.prototype.calcScores = function() {
     // Set protein abundance score
     var abScore = (this.peptide_total / this.tryptic_total) * 100;
     
-    // Find appropriate bin for this abundance score, giving us the actual abundance score
+    // Find appropriate bin for this abundance score, giving us the final abundance score
     var i = 0;
     while (binMap[i] < abScore && i < 99) {
         i++;
@@ -153,20 +147,12 @@ MASCP.Modhunter.prototype.calcScores = function() {
     this.abundance_score = i;
     jQuery('#abundance').text(i);
 
-    // Test if this AGI meets minimum abundance score requirement
-    var minAb = (this.abundance_score >= 20);
     // Iterate through amino acids and compute modhunter rating from 0-100 for each
     for (var q = 0; q < seqLength; q++) {
-        if (minAb) {
-            var thisRating = 100;
-            var predictedBool = 0;
-            var readerDec = (this.sequence[q].reader_coverage >= 2) ? 0 : 1.0;
-            var gatorDec = Math.max(1.0 - (this.sequence[q].gator_coverage / 3.0), 0);
-            if (this.sequence[q].predicted_coverage > 0) { predictedBool = 1; }
-            thisRating = thisRating * predictedBool * readerDec * gatorDec;
-            this.sequence[q].score = thisRating;
-        } else {
-            this.sequence[q].score = 0;
-        }
+        var abScale = this.abundance_score / 100;
+        var gatScore = Math.max(6 - this.sequence[q].gator_coverage, 0) / 6;
+        var predScore = (this.sequence[q].predicted_coverage > 0) ? 1 : 0;
+        var modScore = (gatScore > 0) ? Math.min(Math.round(gatScore * 75) + (predScore * 25), 100) : 0;
+        this.sequence[q].score = modScore;
     }
 };
