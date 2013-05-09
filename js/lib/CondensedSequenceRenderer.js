@@ -707,12 +707,8 @@ MASCP.CondensedSequenceRenderer.prototype.fillModhunter = function(modhunterObje
         // If abundance is low, make shading lighter
         if (ab < 60) {
             scaleVar = ((60 - ab) / 60);
-            console.log(scaleVar);
-            console.log(thisColor);
             hslColor = rgbToHsl(thisColor.slice(1));
             thisColor = '#' + hslToRgb(hslColor[0], hslColor[1], Math.min(hslColor[2]+scaleVar,1));
-            thisColor = shade(thisColor, scaleVar);
-            console.log(thisColor);
         }
         rect.setAttribute('stroke', thisColor);
         rect.setAttribute('fill', thisColor);
