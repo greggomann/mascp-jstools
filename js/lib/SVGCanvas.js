@@ -377,11 +377,10 @@ var SVGCanvas = SVGCanvas || (function() {
         /*  Creates gradient for the modhunter track
         *  Arguments:
         *       id: string containing id of gradient
-        *       stopObject: object literal of format
-        *           { residue_id : modhunter_score, ... }
-        *       seqLength: length of protein sequence
+        *       lftColor: color for left side
+        *       rtColor: color for right side
         */
-        canvas.mod_gradient = function(id, stopObject, seqLength) {
+        canvas.mod_gradient = function(id, lftColor, rtColor) {
             var gradient = this.makeEl('linearGradient',{
                 'id': id,
                 'x1':'0%',
@@ -390,15 +389,14 @@ var SVGCanvas = SVGCanvas || (function() {
                 'y2':'0%'
             });
             
-            for (var stop in stopObject) {
-                var thisPercent = (parseInt(stop)+1) / seqLength;
-                var colorStr = '' + 255-(Math.round((stopObject[stop]/100)*255));
-
-                gradient.appendChild(this.makeEl('stop',{
-                    'offset': thisPercent.toString(),
-                    'style':'stop-color:rgb(255,'+colorStr+','+colorStr+');stop-opacity:1'
-                }));
-            }
+            gradient.appendChild(this.makeEl('stop',{
+                'offset': 0,
+                'style':'stop-color:'+lftColor+';stop-opacity:1'
+            }));
+            gradient.appendChild(this.makeEl('stop',{
+                'offset': 1,
+                'style':'stop-color:'+rtColor+';stop-opacity:1'
+            }));
 
             return gradient;
         };
