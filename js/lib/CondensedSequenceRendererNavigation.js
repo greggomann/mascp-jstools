@@ -677,9 +677,8 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
             // r.setAttribute('fill','#ff0000');
             // label_group.push(r);
         
-        
             var text_scale = (options && options['font-scale']) ? options['font-scale'] : 1;
-            var text_left = 4/3*touch_scale*height*text_scale;            
+            var text_left = 4/3*touch_scale*height*text_scale;
             var a_text = track_canvas.text(text_left,y+0.5*height,track.fullname);
             a_text.setAttribute('height', height);
             a_text.setAttribute('width', height);

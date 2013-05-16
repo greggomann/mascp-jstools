@@ -1638,7 +1638,9 @@ clazz.prototype.refresh = function(animated) {
             }
             if (this.navigation) {
                 y_val -= 1*container.track_height/this.zoom;
-                this.navigation.renderTrack(MASCP.getLayer(name), y_val*RS , RS * 3 * container.track_height / this.zoom );
+                // If this is the modhunter track, scale down text size
+                var theseOpts = (name == 'modhunter') ? { 'font-scale' : 0.6 } : {};
+                this.navigation.renderTrack(MASCP.getLayer(name), y_val*RS , RS * 3 * container.track_height / this.zoom, theseOpts );
                 track_heights += container.track_height;
             }
             track_heights += container.track_height + this.trackGap;
