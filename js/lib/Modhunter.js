@@ -129,7 +129,7 @@ MASCP.Modhunter.prototype.countCoverage = function(modObject, reader) {
 };
 
 
-// calcScores method calculates Modhunter scores for each residue
+// calcScores method calculates Modhunter scores for each residue and the abundance score for the protein
 MASCP.Modhunter.prototype.calcScores = function() {
     // binMap contains log-scale bin values for the protein abundance score
     var binMap = [1.0, 1.11073537957, 1.23373308343, 1.37035098472, 1.52209732116, 1.69064734577, 1.87786182132, 2.08580756289, 2.31678025509, 2.57332979602, 2.85828844775, 3.17480210394, 3.52636501998, 3.91685838898, 4.35059318942, 4.83235777762, 5.36747075035, 5.96183966124, 6.62202623908, 7.3553188282, 8.16981285052, 9.07450017756, 10.0793683992, 11.1955110847, 12.4352502542, 13.8122724111, 15.3417796394, 17.040657431, 18.9276610998, 21.0236228361, 23.3516816909, 25.9375390266, 28.8097422559, 32.0, 35.5435321463, 39.4794586699, 43.851231511, 48.7071142772, 54.1007150645, 60.0915782823, 66.7458420126, 74.1369681627, 82.3465534726, 91.4652303279, 101.593667326, 112.843680639, 125.339468447, 139.218982061, 154.635448884, 171.759064011, 190.77886916, 211.904839651, 235.370202503, 261.434011217, 290.384005682, 322.539788773, 358.25635471, 397.928008133, 441.992717157, 490.936948459, 545.301037793, 605.685155195, 672.755930757, 747.253814109, 830.001248851, 921.911752189, 1024.0, 1137.39302868, 1263.34267744, 1403.23940835, 1558.62765687, 1731.22288206, 1922.93050504, 2135.8669444, 2372.38298121, 2635.08971112, 2926.88737049, 3250.99735443, 3610.99778046, 4010.86299032, 4455.00742597, 4948.33436428, 5496.29004836, 6104.92381311, 6780.95486882, 7531.84648008, 8365.88835894, 9292.28818183, 10321.2732407, 11464.2033507, 12733.6962603, 14143.766949, 15709.9823507, 17449.6332094, 19381.9249662, 21528.1897842, 23912.1220515, 26560.0399632, 29501.17607, 32768.0];
@@ -149,9 +149,14 @@ MASCP.Modhunter.prototype.calcScores = function() {
 
     // Iterate through amino acids and compute modhunter rating from 0-100 for each
     for (var q = 0; q < seqLength; q++) {
+        // gatScore is based on # of peptides in the Gator that cover this residue
         var gatScore = Math.max(6 - this.sequence[q].gator_coverage, 0) / 6;
+        // predScore is based on # of predicted peptides that cover this residue
         var predScore = (this.sequence[q].predicted_coverage > 0) ? 1 : 0;
-        var modScore = (gatScore > 0) ? Math.min(Math.round(gatScore * 75) + (predScore * 25), 100) : 0;
+        // abScale scales the ModHunter score based on protein abundance score
+        var abScale = Math.min(this.abundance_score / 60, 1);
+        // modScore is the ModHunter score
+        var modScore = Math.round(Math.min(Math.round(gatScore * 60) + (predScore * 40), 100) * abScale);
         this.sequence[q].score = modScore;
     }
 };
