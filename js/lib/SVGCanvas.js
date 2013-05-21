@@ -458,6 +458,104 @@ var SVGCanvas = SVGCanvas || (function() {
           return a_rect;
         };
 
+        // Popup object to be attached to hover events on peptide objects (aka BoxOverlays)
+        canvas.popup = function(mouseX,mouseY,clientX,popupData) {
+            // Correct mouse cursor location
+            var actualMouseX = mouseX - 7;
+            var actualMouseY = mouseY - 130;
+            var popupWidth = 350;
+
+            // Set popup location relative to mouse cursor
+            if ( clientX >= window.innerWidth / 2 ) {
+                var offsetX = -370;
+                var polyOffsetX = -20;
+            }
+            else {
+                var offsetX = 20;
+                var polyOffsetX = 20;
+            }
+
+            var xCoord = actualMouseX + offsetX;
+
+            // Create container for popup
+            var a_popup = document.createElementNS(svgns,'g');
+            a_popup.setAttribute('id','popup');
+            // Create main popup body
+            var popup_rect = document.createElementNS(svgns, 'rect');
+            popup_rect.setAttribute('x', xCoord);
+            popup_rect.setAttribute('width', popupWidth);
+            popup_rect.setAttribute('rx', 10);
+            popup_rect.setAttribute('ry', 10);
+            popup_rect.setAttribute('stroke','#000000');
+            popup_rect.setAttribute('stroke-width',2);
+            popup_rect.setAttribute('fill','#ffffff');
+            a_popup.appendChild(popup_rect);
+
+            // Create arrow from mouse location to popup body
+            var popup_poly = document.createElementNS(svgns, 'polygon');
+            var polyX = (actualMouseX+polyOffsetX);
+            popup_poly.setAttribute('points',(actualMouseX)+','+(actualMouseY)+' '+polyX+','+(actualMouseY-10)+' '+polyX+','+(actualMouseY+10));
+            popup_poly.setAttribute('stroke','#000000');
+            popup_poly.setAttribute('stroke-width',2);
+            popup_poly.setAttribute('fill','#ffffff');
+            a_popup.appendChild(popup_poly);
+
+            // Cover up black line at intersection of popup_rect and popup_poly
+            var popup_line = document.createElementNS(svgns, 'polyline');
+            popup_line.setAttribute('points',(polyX)+','+(actualMouseY-9)+' '+(polyX)+','+(actualMouseY+9));
+            popup_line.setAttribute('stroke','#ffffff');
+            popup_line.setAttribute('stroke-width',3);
+            a_popup.appendChild(popup_line);
+
+            // Initialize line counter k
+            var k = 1;
+            var lineHeight = 16;
+            var lineLength = 38;
+            
+            // Fill popup content from popupData argument
+            if (popupData) {
+                var textX = actualMouseX+offsetX+10;
+
+                // Create foreignObject element which will contain HTML within popup
+                var popupForeign = document.createElementNS(svgns, 'foreignObject');
+                popupForeign.setAttribute('x', xCoord+10);
+                popupForeign.setAttribute('width', popupWidth-20);
+                var popupBody = document.createElement('body');
+                popupBody.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+                popupBody.setAttribute('style', 'vertical-align: middle');
+                //popupForeign.appendChild(popupBody);
+                a_popup.appendChild(popupForeign);
+
+                // Iterate over data to be displayed
+                var firstTitle = true;
+                for (var popupKey in popupData) {
+                    var popupValue = new String(popupData[popupKey]);
+                    var popupDiv = document.createElement('div');
+                    popupDiv.setAttribute('style', 'font-family: monospace; font-size: 14px; border-width: 0; word-wrap: break-word');
+                    if (popupKey == 'Sequence') {
+                        k += Math.ceil(popupValue.length / lineLength);
+                        popupDiv.innerHTML = '<strong>' + popupKey + ':</strong><br>' + popupValue;
+                    } else {
+                        k += Math.ceil((popupValue.length+popupKey.length) / lineLength);
+                        popupDiv.innerHTML = '<strong>' + popupKey + ':</strong> ' + popupValue;
+                    }
+                    popupForeign.appendChild(popupDiv);
+                }
+            }
+
+            // Set size and y-position based on amount of text displayed
+            var popupHeight = (k * lineHeight) + 20;
+            popup_rect.setAttribute('height', popupHeight);
+            popupForeign.setAttribute('height', popupHeight-20);
+            // popupTextContainer.setAttribute('y', actualMouseY-(popupHeight/2)+20);
+            var yCoord = actualMouseY - (popupHeight/2);
+            popup_rect.setAttribute('y', yCoord);
+            popupForeign.setAttribute('y', yCoord+10);
+
+            this.parentNode.appendChild(a_popup);
+            return a_popup;
+        };
+
         canvas.use = function(ref,x,y,width,height) {
             var a_use = document.createElementNS(svgns,'use');
             a_use.setAttribute('x', typeof x == 'string' ? x : x * RS);
@@ -592,6 +690,7 @@ var SVGCanvas = SVGCanvas || (function() {
                 } catch (e) {
                     console.log('getBBox() threw error in canvas.growingMarker');
                 }
+                
                 var widget_height = parseFloat(this.firstChild.firstChild.getAttribute('height'));
                 var centering_offset = 3/5*widget_height;
                 if (this.angle > 10) {
