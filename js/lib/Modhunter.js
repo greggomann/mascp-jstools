@@ -37,6 +37,7 @@ MASCP.Modhunter.prototype.loadSequence = function(modObject, inputSequence) {
         modObject.sequence[i]['gator_coverage'] = 0;
         modObject.sequence[i]['predicted_coverage'] = 0;
         modObject.sequence[i]['reader_coverage'] = 0;
+        modObject.sequence[i]['snp_coverage'] = 0;
         modObject.sequence[i]['score'] = 0;
     }
 
@@ -61,7 +62,8 @@ MASCP.Modhunter.prototype.countCoverage = function(modObject, reader) {
                     'MASCP.AtChloroReader': ['', '', 0.0570994709686],
                     'MASCP.GelMapReader': ['', '', 1.0],
                     'MASCP.ProteotypicReader': ['pvalue', 'value', 1.0],
-                    'MASCP.PubmedReader': ['', '', 0.321208781115]  };
+                    'MASCP.PubmedReader': ['', '', 0.321208781115],
+                    'MASCP.SnpReader': ['', '', 1.0] };
 
     if (typeof readerList[reader.toString()] === 'undefined') {
         return;
@@ -83,46 +85,64 @@ MASCP.Modhunter.prototype.countCoverage = function(modObject, reader) {
     // Populate list of peptides for which to count coverage
     var getPeps = [];
     if (reader.result) {
-        getPeps = reader.result.getPeptides();
+        // If this is for the SnpReader, use getSnp() method instead of getPeptides()
+        if (reader.toString() == 'MASCP.SnpReader') {
+            var accList = reader.result.getAccessions();
+            for (var accIdx in accList) {
+                getPeps.push.apply(getPeps, reader.result.getSnp(accList[accIdx]));
+            }
+        } else {
+            getPeps = reader.result.getPeptides();
+        }
     }
     
     // rdrCoverageList keeps track of indeces whose reader_coverage property have
     //      already been incremented for the current reader
     var rdrCoverageList = [];
-    
+
     if (getPeps.length > 0) {
-        // For each peptide, increment coverage properties for the residues within the peptide
+        // For each peptide, increment coverage properties for the residues covered by the peptide
         for (var pep in getPeps) {
-            var thisIdx = convertToIndeces(getPeps[pep].sequence);
-            var firstLoop = true;
-            for (var p = thisIdx[0]; p < thisIdx[1]; p++) {
-                // Check for predicted peptide vs. experimental peptide
-                if (reader.toString() == 'MASCP.ProteotypicReader') {
-                    modObject.sequence[p].predicted_coverage += 1;
-                    if (firstLoop == true) {
-                        modObject.predicted_total += 1;
-                        firstLoop = false;
+            // Special cases for ProteotypicReader or SnpReader
+            // Otherwise, run default routine for generic reader
+            switch (reader.toString()) {
+                case 'MASCP.ProteotypicReader':
+                    var thisIdx = convertToIndeces(getPeps[pep].sequence);
+                    var firstLoop = true;
+                    for (var p = thisIdx[0]; p < thisIdx[1]; p++) {
+                        modObject.sequence[p].predicted_coverage += 1;
+                        if (firstLoop == true) {
+                            modObject.predicted_total += 1;
+                            firstLoop = false;
+                        }
                     }
-                } else {
-                    // Retrieve spectral count for experimental peptides, if available
-                    var pepCount = 1;
-                    if (readerList[reader.toString()][1] == 'length') {
-                        pepCount = getPeps[pep][readerList[reader.toString()][0]].length;
+                    break;
+                case 'MASCP.SnpReader':
+                    modObject.sequence[getPeps[pep][0]-1].snp_coverage += 1;
+                    break;
+                default:
+                    var thisIdx = convertToIndeces(getPeps[pep].sequence);
+                    var firstLoop = true;
+                    for (var p = thisIdx[0]; p < thisIdx[1]; p++) {
+                        // Retrieve spectral count for experimental peptides, if available
+                        var pepCount = 1;
+                        if (readerList[reader.toString()][1] == 'length') {
+                            pepCount = getPeps[pep][readerList[reader.toString()][0]].length;
+                        }
+                        else if (readerList[reader.toString()][1] == 'value') {
+                            pepCount = parseInt(getPeps[pep][readerList[reader.toString()][0]]);
+                        }
+                        if (firstLoop == true) {
+                            modObject.peptide_total += pepCount;
+                            firstLoop = false;
+                        }
+                        modObject.sequence[p].gator_coverage += pepCount;
+                        // If modObject residue's reader_coverage hasn't yet been incremented, do so now
+                        if (rdrCoverageList.indexOf(p) < 0) {
+                            modObject.sequence[p].reader_coverage += 1;
+                            rdrCoverageList.push(p);
+                        }
                     }
-                    else if (readerList[reader.toString()][1] == 'value') {
-                        pepCount = parseInt(getPeps[pep][readerList[reader.toString()][0]]);
-                    }
-                    if (firstLoop == true) {
-                        modObject.peptide_total += pepCount;
-                        firstLoop = false;
-                    }
-                    modObject.sequence[p].gator_coverage += pepCount;
-                    // If modObject residue's reader_coverage hasn't yet been incremented, do so now
-                    if (rdrCoverageList.indexOf(p) < 0) {
-                        modObject.sequence[p].reader_coverage += 1;
-                        rdrCoverageList.push(p);
-                    }
-                }
             }
         }
     }
@@ -153,10 +173,12 @@ MASCP.Modhunter.prototype.calcScores = function() {
         var gatScore = Math.max(6 - this.sequence[q].gator_coverage, 0) / 6;
         // predScore is based on # of predicted peptides that cover this residue
         var predScore = (this.sequence[q].predicted_coverage > 0) ? 1 : 0;
+        // snpScore is based on # of nsSNPs
+        var snpScore = Math.max(1-(this.sequence[q].snp_coverage / 50), 0);
         // abScale scales the ModHunter score based on protein abundance score
         var abScale = Math.min(this.abundance_score / 60, 1);
         // modScore is the ModHunter score
-        var modScore = Math.round(Math.min(Math.round(gatScore * 60) + (predScore * 40), 100) * abScale);
+        var modScore = Math.round(Math.min(Math.round(((gatScore * 60) + (predScore * 40)) * snpScore), 100) * abScale);
         this.sequence[q].score = modScore;
     }
 };
