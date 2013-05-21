@@ -176,7 +176,7 @@ MASCP.Modhunter.prototype.calcScores = function() {
         // snpScore is based on # of nsSNPs
         var snpScore = Math.max(1-(this.sequence[q].snp_coverage / 50), 0);
         // abScale scales the ModHunter score based on protein abundance score
-        var abScale = Math.min(this.abundance_score / 60, 1);
+        var abScale = Math.min(this.abundance_score / 50, 1);
         // modScore is the ModHunter score
         var modScore = Math.round(Math.min(Math.round(((gatScore * 60) + (predScore * 40)) * snpScore), 100) * abScale);
         this.sequence[q].score = modScore;
