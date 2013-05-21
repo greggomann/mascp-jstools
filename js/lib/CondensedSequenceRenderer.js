@@ -572,6 +572,38 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
 
 })(MASCP.CondensedSequenceRenderer);
 
+
+// Function for mouseover events on peptide objects, aka BoxOverlays, to trigger hover popup
+var mouseOver = function(setting, target, canvas, popupData) {
+    if (setting == 'on') {
+        target.timerID = setTimeout( function() {
+            // Transform mouse cursor location to SVG canvas coordinates
+            canvas.cursorPos = canvas.cursorPos.matrixTransform(canvas.parentNode.getCTM().inverse());
+            // Create popup
+            target.popup = canvas.popup(canvas.cursorPos.x, canvas.cursorPos.y, canvas.clientX, popupData);
+            bean.add(target.popup, 'mouseenter', function() { canvas.withinPopup = true; });
+            bean.add(target.popup, 'mouseleave', function() {
+                canvas.withinPopup = false;
+                setTimeout( function() {
+                    var testTarget = document.getElementById('popup');
+                    // Test for presence of popup and mouseover in the popup itself before removing
+                    if (typeof(testTarget) != 'undefined' && testTarget != null && ! canvas.withinPopup === true) { canvas.parentNode.removeChild(target.popup); }
+                }, 100); 
+            });
+        }, 500);
+    }
+    if (setting == 'off') {
+        if (target.timerID) { clearTimeout(target.timerID); }
+        // Test for presence of a popup and a mouseover event in the popup itself before removing
+        setTimeout( function() {
+            var testTarget = document.getElementById('popup');
+            if (typeof(testTarget) != 'undefined' && testTarget != null && ! canvas.withinPopup === true) { canvas.parentNode.removeChild(target.popup); }
+        }, 20);
+    }
+    return;
+};
+
+
 /**
  * Create a Hydropathy plot, and add it to the renderer as a layer.
  * @param {Number}  windowSize  Size of the sliding window to use to calculate hydropathy values
@@ -674,6 +706,7 @@ MASCP.CondensedSequenceRenderer.prototype.createModhunterLayer = function() {
  */
 MASCP.CondensedSequenceRenderer.prototype.fillModhunter = function(modhunterObject) {
     var seqLength = this.sequence.length;
+    var canvas = this._canvas;
 
     // scrToColor converts a 0-100 score to a shade of red
     var scrToColor = function(scr) {
@@ -684,14 +717,20 @@ MASCP.CondensedSequenceRenderer.prototype.fillModhunter = function(modhunterObje
     // insertRect adds a rect to the modhunter layer from 'lft' to 'rt' with a score of 'scr' and abundance 'ab'
     var insertRect = function(lft, rt, scr, ab) {
         var rect = this._canvas.rect(lft, 0, rt-lft, 4);
+        var canvas = this._canvas;
         var thisColor = scrToColor(scr);
         rect.setAttribute('stroke', thisColor);
         rect.setAttribute('fill', thisColor);
+        rect.setAttribute('cursor', 'default');
+
+        var popupData = { 'Mod Score': scr };
+        bean.add(rect, 'mouseenter', function() { mouseOver('on', rect, canvas, popupData); });
+        bean.add(rect, 'mouseleave', function() { mouseOver('off', rect, canvas, popupData); });
+
         this._layer_containers.modhunter.push(rect);
     }
 
-    var canv = this._canvas;
-    var defs = canv.parentNode.ownerDocument.getElementsByTagNameNS(svgns, 'defs')[0];
+    var defs = canvas.parentNode.ownerDocument.getElementsByTagNameNS(svgns, 'defs')[0];
 
     // insertGrad adds a gradient-filled rect to the modhunter to transition between colors
     var insertGrad = function(lft, rt, lftScr, rtScr) {
@@ -700,10 +739,19 @@ MASCP.CondensedSequenceRenderer.prototype.fillModhunter = function(modhunterObje
         var rtColor = scrToColor(rtScr);
 
         // Create gradient object
-        defs.appendChild(canv.mod_gradient('mod_gradient_'+lft.toString(), lftColor, rtColor));
+        defs.appendChild(canvas.mod_gradient('mod_gradient_'+lft.toString(), lftColor, rtColor));
 
         rect.setAttribute('stroke', 'url(#mod_gradient_'+lft.toString()+')');
         rect.setAttribute('fill', 'url(#mod_gradient_'+lft.toString()+')');
+
+        // If one side of this gradient is zero, attach a popup with the non-zero Mod Score
+        if ((lftScr == 0 || rtScr == 0) && !(lftScr > 0 && rtScr > 0)) {
+            var popupData = { 'Mod Score': (lftScr > 0) ? lftScr : rtScr };
+            bean.add(rect, 'mouseenter', function() { mouseOver('on', rect, canvas, popupData); });
+            bean.add(rect, 'mouseleave', function() { mouseOver('off', rect, canvas, popupData); });
+            rect.setAttribute('cursor', 'default');
+        }
+
         this._layer_containers.modhunter.push(rect);
 
         return this;
@@ -782,35 +830,6 @@ var addElementToLayer = function(layerName) {
     return [tracer,tracer_marker,bobble];
 };
 
-// Function for mouseover events on peptide objects, aka BoxOverlays, to trigger hover popup
-var mouseOver = function(setting, target, canvas, popupData) {
-    if (setting == 'on') {
-        target.timerID = setTimeout( function() {
-            // Transform mouse cursor location to SVG canvas coordinates
-            canvas.cursorPos = canvas.cursorPos.matrixTransform(canvas.parentNode.getCTM().inverse());
-            // Create popup
-            target.popup = canvas.popup(canvas.cursorPos.x, canvas.cursorPos.y, canvas.clientX, popupData);
-            bean.add(target.popup, 'mouseenter', function() { canvas.withinPopup = true; });
-            bean.add(target.popup, 'mouseleave', function() {
-                canvas.withinPopup = false;
-                setTimeout( function() {
-                    var testTarget = document.getElementById('popup');
-                    // Test for presence of popup and mouseover in the popup itself before removing
-                    if (typeof(testTarget) != 'undefined' && testTarget != null && ! canvas.withinPopup === true) { canvas.parentNode.removeChild(target.popup); }
-                }, 100); 
-            });
-        }, 500);
-    }
-    if (setting == 'off') {
-        if (target.timerID) { clearTimeout(target.timerID); }
-        // Test for presence of a popup and a mouseover event in the popup itself before removing
-        setTimeout( function() {
-            var testTarget = document.getElementById('popup');
-            if (typeof(testTarget) != 'undefined' && testTarget != null && ! canvas.withinPopup === true) { canvas.parentNode.removeChild(target.popup); }
-        }, 20);
-    }
-    return;
-};
 
 var addBoxOverlayToElement = function(layerName,width,fraction) {
     
