@@ -12,12 +12,28 @@ MASCP.Modhunter = function() {
 };
 
 
+/**
+ *  Binds a handler to one or more events. Returns a reference to self, so this method
+ *  can be chained.
+ *
+ *  @param  {String}    type        Event type to bind
+ *  @param  {Function}  function    Handler to execute on event
+ *  @arg    {Object}    this        Passed as 'this' to function
+ */
+
+MASCP.Modhunter.prototype.bind = function(type,func)
+{
+    bean.add(this,type,func);
+    return this;
+};
+
+
 // loadSequence method initializes Modhunter objects for a given protein sequence
 MASCP.Modhunter.prototype.loadSequence = function(modObject, inputSequence) {
-    
+
     // Initialize the sequence for the Modhunter
     // Whole protein sequence is needed later to find peptide indeces
-    modObject['whole_sequence'] = inputSequence;
+    modObject['whole_sequence'] = (inputSequence) ? inputSequence : '';
     modObject['predicted_total'] = 0;
     modObject['peptide_total'] = 0;
     modObject['abundance_score'] = 0;
@@ -42,6 +58,9 @@ MASCP.Modhunter.prototype.loadSequence = function(modObject, inputSequence) {
     }
 
     modObject['tryptic_total'] = trypticCount;
+
+    bean.fire(this,'sequenceLoaded');
+    return this;
 };
 
 
@@ -99,7 +118,7 @@ MASCP.Modhunter.prototype.countCoverage = function(modObject, reader) {
     // rdrCoverageList keeps track of indeces whose reader_coverage property have
     //      already been incremented for the current reader
     var rdrCoverageList = [];
-
+    
     if (getPeps.length > 0) {
         // For each peptide, increment coverage properties for the residues covered by the peptide
         for (var pep in getPeps) {
@@ -118,7 +137,9 @@ MASCP.Modhunter.prototype.countCoverage = function(modObject, reader) {
                     }
                     break;
                 case 'MASCP.SnpReader':
-                    modObject.sequence[getPeps[pep][0]-1].snp_coverage += 1;
+                    if (modObject.sequence[getPeps[pep][0]-1]) {
+                        modObject.sequence[getPeps[pep][0]-1].snp_coverage += 1;
+                    }
                     break;
                 default:
                     var thisIdx = convertToIndeces(getPeps[pep].sequence);
@@ -146,6 +167,9 @@ MASCP.Modhunter.prototype.countCoverage = function(modObject, reader) {
             }
         }
     }
+
+    bean.fire(this,'coverageCounted');
+    return this;
 };
 
 
@@ -170,15 +194,18 @@ MASCP.Modhunter.prototype.calcScores = function() {
     // Iterate through amino acids and compute modhunter rating from 0-100 for each
     for (var q = 0; q < seqLength; q++) {
         // gatScore is based on # of peptides in the Gator that cover this residue
-        var gatScore = Math.max(6 - this.sequence[q].gator_coverage, 0) / 6;
+        var gatScore = Math.max(1 - this.sequence[q].gator_coverage, 0) / 1;
         // predScore is based on # of predicted peptides that cover this residue
         var predScore = (this.sequence[q].predicted_coverage > 0) ? 1 : 0;
         // snpScore is based on # of nsSNPs
-        var snpScore = Math.max(1-(this.sequence[q].snp_coverage / 50), 0);
+        // var snpScore = Math.max(1-(this.sequence[q].snp_coverage / 50), 0);
         // abScale scales the ModHunter score based on protein abundance score
         var abScale = Math.min(this.abundance_score / 50, 1);
         // modScore is the ModHunter score
-        var modScore = Math.round(Math.min(Math.round(((gatScore * 60) + (predScore * 40)) * snpScore), 100) * abScale);
+        var modScore = Math.round(Math.min(Math.round(((gatScore * 40) + (predScore * 60))), 100) * abScale);
         this.sequence[q].score = modScore;
     }
+
+    bean.fire(this,'scoresCalculated');
+    return this;
 };

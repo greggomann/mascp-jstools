@@ -763,6 +763,8 @@ MASCP.CondensedSequenceRenderer.prototype.fillModhunter = function(modhunterObje
 
     for (var i = 0; i < seqLength; i++) {
         thisScore = modhunterObject.sequence[i].score;
+        thisSnp = Math.max(1-(modhunterObject.sequence[i].snp_coverage/50),0);
+        thisScore = thisScore * thisSnp;
         if (thisScore != storedScore) {
             if (storedScore > 0) {
                 insertRect.call(this, leftIndex, i-1, storedScore);
