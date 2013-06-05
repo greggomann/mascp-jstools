@@ -767,10 +767,10 @@ MASCP.CondensedSequenceRenderer.prototype.fillModhunter = function(modhunterObje
         thisScore = thisScore * thisSnp;
         if (thisScore != storedScore) {
             if (storedScore > 0) {
-                insertRect.call(this, leftIndex, i-1, storedScore);
+                insertRect.call(this, leftIndex+0.5, i-0.5, storedScore);
             }
             if (i != 0) {
-                insertGrad.call(this, (storedScore == 0) ? i-1.5 : i-1, (thisScore == 0) ? i+0.5 : i, storedScore, thisScore);
+                insertGrad.call(this, i-0.5, i+0.5, storedScore, thisScore);
             }
             leftIndex = i;
             storedScore = thisScore;
