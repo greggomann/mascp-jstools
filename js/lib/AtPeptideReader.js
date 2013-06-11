@@ -114,7 +114,7 @@ MASCP.AtPeptideReader.prototype.setupSequenceRenderer = function(sequenceRendere
 
         var css_block = '.active .overlay { background: #ff5533; } .active a { color: #000000; text-decoration: none !important; }  :indeterminate { background: #ff0000; } .tracks .active { background: #0000ff; } .inactive a { text-decoration: none; } .inactive { display: none; }';
 
-        MASCP.registerLayer(overlay_name,{ 'fullname' : 'AtPeptide MS/MS', 'color' : '#ff5533', 'css' : css_block });
+        MASCP.registerLayer(overlay_name,{ 'fullname' : 'AtPeptide MS/MS', 'color' : '#ff5533', 'css' : css_block, 'hover_peptides' : true});
 
         if (sequenceRenderer.createGroupController) {
             sequenceRenderer.createGroupController('atpeptide_controller','atpeptide_experimental');
@@ -123,7 +123,7 @@ MASCP.AtPeptideReader.prototype.setupSequenceRenderer = function(sequenceRendere
         var peps = this.result.getPeptides();
         for (var j = 0; j < this.result.tissues().length; j++ ) {
             var a_tissue = this.result.tissues()[j];
-            MASCP.registerLayer('atpeptide_peptide_'+a_tissue, { 'fullname': this.result._long_name_map[a_tissue], 'group' : 'atpeptide_experimental', 'color' : '#ff5533', 'css' : css_block });
+            MASCP.registerLayer('atpeptide_peptide_'+a_tissue, { 'fullname': this.result._long_name_map[a_tissue], 'group' : 'atpeptide_experimental', 'color' : '#ff5533', 'css' : css_block, 'hover_peptides' : true });
             for(var i = 0; i < peps.length; i++) {
                 var peptide = peps[i].sequence;
                 if ( peps[i].tissues.indexOf(a_tissue+'') < 0 ) {

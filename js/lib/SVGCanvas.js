@@ -163,29 +163,11 @@ var SVGCanvas = SVGCanvas || (function() {
                             curr_style += '; '+hash[key];
                             value = curr_style;
                         }
-                        if (key == 'height' && an_array[i].hasAttribute('transform')) {
-                            curr_transform = an_array[i].getAttribute('transform');
+                        var has_translate = an_array[i].hasAttribute('transform') && (an_array[i].getAttribute('transform').indexOf('translate') >= 0);
 
-                            var curr_scale = /scale\((-?\d+\.?\d*)\)/.exec(an_array[i].getAttribute('transform'));
-                        
-                            var curr_height = parseFloat(an_array[i].getAttribute('height') || 1);
-                        
-                            var new_scale = 1;
-                            if (curr_scale === null) {
-                                curr_transform += ' scale(1) ';
-                                curr_scale = 1;
-                            } else {
-                                curr_scale = parseFloat(curr_scale[1]);
-                            }
-                        
-                        
-                            new_scale = ( parseFloat(hash[key]) / curr_height ) * curr_scale;
-                        
-                            curr_transform = curr_transform.replace(/scale\((-?\d+\.?\d*)\)/,'scale('+new_scale+')');
-
-                            an_array[i].setAttribute('transform',curr_transform);
-                        }
-                        if  (! (an_array[i].hasAttribute('transform') && (key == 'y' || key == 'x'))) {
+                        if (key == 'height' && an_array[i].setHeight ) { //hasAttribute('transform') && ! an_array[i].no_scale) {
+                            an_array[i].setHeight(hash[key]);
+                        } else if  (! (has_translate && (key == 'y' || key == 'x'))) {
                             an_array[i].setAttribute(key, value);                        
                         }
                         if (key == 'y' && an_array[i].hasAttribute('d')) {
@@ -238,7 +220,7 @@ var SVGCanvas = SVGCanvas || (function() {
         an_array.refresh_zoom = function() {
             for (var i = 0; i < an_array.length; i++ ) {
                 if (an_array[i].zoom_level && an_array[i].zoom_level == 'text') {
-                    if (canvas.zoom > 3.5) {
+                    if (an_array[i].ownerSVGElement.zoom > 3.5) {
                         an_array[i].setAttribute('display', 'inline');
                         an_array[i].setAttribute('opacity', 1);
                     } else {
@@ -247,7 +229,7 @@ var SVGCanvas = SVGCanvas || (function() {
                 }
             
                 if (an_array[i].zoom_level && an_array[i].zoom_level == 'summary') {
-                    if (canvas.zoom <= 3.5) {
+                    if (an_array[i].ownerSVGElement.zoom <= 3.5) {
                         an_array[i].setAttribute('display', 'inline');
                         an_array[i].setAttribute('opacity', 1);
                     } else {
@@ -333,16 +315,39 @@ var SVGCanvas = SVGCanvas || (function() {
             
         },rate);
     };
+    var scale_re = /scale\((-?\d+\.?\d*)\)/;
+    var setHeight = function(height) {
+        var curr_transform = this.getAttribute('transform').toString();
+
+        var curr_scale = scale_re.exec(curr_transform);
     
+        var curr_height = parseFloat(this.getAttribute('height') || 1);
+
+        var new_scale = 1;
+        if (curr_scale === null) {
+            curr_transform += ' scale(1) ';
+            curr_scale = 1;
+        } else {
+            curr_scale = parseFloat(curr_scale[1]);
+        }
+        new_scale = ( parseFloat(height) / curr_height ) * curr_scale;
+
+        curr_transform = curr_transform.replace(scale_re,'scale('+new_scale+')');
+
+        this.setAttribute('transform',curr_transform);
+        this.setAttribute('height',height);
+        return new_scale;
+    };
+
     return (function(canvas) {
         
         var RS = canvas.RS || DEFAULT_RS;
         canvas.RS = RS;
-        
+        canvas.font_order = 'Helvetica, Verdana, Arial, Sans-serif'
         extended_elements.push(canvas);
         
         canvas.makeEl = function(name,attributes) {
-            var result = document.createElementNS(svgns,name);
+            var result = canvas.ownerDocument.createElementNS(svgns,name);
             for (var attribute in attributes) {
                 if (attributes.hasOwnProperty(attribute)) {
                     result.setAttribute(attribute, attributes[attribute]);
@@ -430,6 +435,104 @@ var SVGCanvas = SVGCanvas || (function() {
           return a_rect;
         };
 
+        // Popup object to be attached to hover events on peptide objects (aka BoxOverlays)
+        canvas.popup = function(mouseX,mouseY,clientX,popupData) {
+            // Correct mouse cursor location
+            var actualMouseX = mouseX - 7;
+            var actualMouseY = mouseY - 130;
+            var popupWidth = 350;
+
+            // Set popup location relative to mouse cursor
+            if ( clientX >= window.innerWidth / 2 ) {
+                var offsetX = -370;
+                var polyOffsetX = -20;
+            }
+            else {
+                var offsetX = 20;
+                var polyOffsetX = 20;
+            }
+
+            var xCoord = actualMouseX + offsetX;
+
+            // Create container for popup
+            var a_popup = document.createElementNS(svgns,'g');
+            a_popup.setAttribute('id','popup');
+            // Create main popup body
+            var popup_rect = document.createElementNS(svgns, 'rect');
+            popup_rect.setAttribute('x', xCoord);
+            popup_rect.setAttribute('width', popupWidth);
+            popup_rect.setAttribute('rx', 10);
+            popup_rect.setAttribute('ry', 10);
+            popup_rect.setAttribute('stroke','#000000');
+            popup_rect.setAttribute('stroke-width',2);
+            popup_rect.setAttribute('fill','#ffffff');
+            a_popup.appendChild(popup_rect);
+
+            // Create arrow from mouse location to popup body
+            var popup_poly = document.createElementNS(svgns, 'polygon');
+            var polyX = (actualMouseX+polyOffsetX);
+            popup_poly.setAttribute('points',(actualMouseX)+','+(actualMouseY)+' '+polyX+','+(actualMouseY-10)+' '+polyX+','+(actualMouseY+10));
+            popup_poly.setAttribute('stroke','#000000');
+            popup_poly.setAttribute('stroke-width',2);
+            popup_poly.setAttribute('fill','#ffffff');
+            a_popup.appendChild(popup_poly);
+
+            // Cover up black line at intersection of popup_rect and popup_poly
+            var popup_line = document.createElementNS(svgns, 'polyline');
+            popup_line.setAttribute('points',(polyX)+','+(actualMouseY-9)+' '+(polyX)+','+(actualMouseY+9));
+            popup_line.setAttribute('stroke','#ffffff');
+            popup_line.setAttribute('stroke-width',3);
+            a_popup.appendChild(popup_line);
+
+            // Initialize line counter k
+            var k = 1;
+            var lineHeight = 16;
+            var lineLength = 38;
+            
+            // Fill popup content from popupData argument
+            if (popupData) {
+                var textX = actualMouseX+offsetX+10;
+
+                // Create foreignObject element which will contain HTML within popup
+                var popupForeign = document.createElementNS(svgns, 'foreignObject');
+                popupForeign.setAttribute('x', xCoord+10);
+                popupForeign.setAttribute('width', popupWidth-20);
+                var popupBody = document.createElement('body');
+                popupBody.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
+                popupBody.setAttribute('style', 'vertical-align: middle');
+                //popupForeign.appendChild(popupBody);
+                a_popup.appendChild(popupForeign);
+
+                // Iterate over data to be displayed
+                var firstTitle = true;
+                for (var popupKey in popupData) {
+                    var popupValue = new String(popupData[popupKey]);
+                    var popupDiv = document.createElement('div');
+                    popupDiv.setAttribute('style', 'font-family: monospace; font-size: 14px; border-width: 0; word-wrap: break-word');
+                    if (popupKey == 'Sequence') {
+                        k += Math.ceil(popupValue.length / lineLength);
+                        popupDiv.innerHTML = '<strong>' + popupKey + ':</strong><br>' + popupValue;
+                    } else {
+                        k += Math.ceil((popupValue.length+popupKey.length) / lineLength);
+                        popupDiv.innerHTML = '<strong>' + popupKey + ':</strong> ' + popupValue;
+                    }
+                    popupForeign.appendChild(popupDiv);
+                }
+            }
+
+            // Set size and y-position based on amount of text displayed
+            var popupHeight = (k * lineHeight) + 20;
+            popup_rect.setAttribute('height', popupHeight);
+            popupForeign.setAttribute('height', popupHeight-20);
+            // popupTextContainer.setAttribute('y', actualMouseY-(popupHeight/2)+20);
+            var yCoord = actualMouseY - (popupHeight/2);
+            popup_rect.setAttribute('y', yCoord);
+            popupForeign.setAttribute('y', yCoord+10);
+
+            this.parentNode.appendChild(a_popup);
+            return a_popup;
+        };
+
         canvas.use = function(ref,x,y,width,height) {
             var a_use = document.createElementNS(svgns,'use');
             a_use.setAttribute('x', typeof x == 'string' ? x : x * RS);
@@ -510,9 +613,9 @@ var SVGCanvas = SVGCanvas || (function() {
 
         canvas.callout = function(x,y,content,opts) {
             var callout = this.group();
-            var back = this.rect(-0.5*(opts.width+4),20,opts.width+4,opts.height+4);
+            var back = this.roundRect(-0.5*(opts.width+4),20,opts.width+4,opts.height+4,4);
             back.setAttribute('fill','#000000');
-            var pres_box = this.rect(-0.5*(opts.width+1),22,opts.width+1,opts.height);
+            var pres_box = this.roundRect(-0.5*(opts.width+1),22,opts.width+1,opts.height,4);
             pres_box.setAttribute('fill','#eeeeee');
             callout.push(back);
             callout.push(pres_box);
@@ -521,7 +624,7 @@ var SVGCanvas = SVGCanvas || (function() {
             callout.push(poly);
             var fo = document.createElementNS(svgns,'foreignObject');
             fo.setAttribute('x',-0.5*(opts.width+1)*RS);
-            fo.setAttribute('y',21*RS);
+            fo.setAttribute('y',22*RS);
             fo.setAttribute('width',opts.width*RS);
             fo.setAttribute('height',opts.height*RS);
             callout.push(fo);
@@ -530,24 +633,73 @@ var SVGCanvas = SVGCanvas || (function() {
             var body = document.createElementNS('http://www.w3.org/1999/xhtml','body');
             body.style.fontSize = (15*RS) +'px';
             body.style.margin = (5*RS)+'px';
+            body.style.height = opts.height*RS*10+'px';
             html.appendChild(body);
             body.appendChild(content);
             fo.appendChild(html);
             callout.setAttribute('transform','translate('+(x*RS)+','+((y+20)*RS)+')');
+            callout.setHeight = setHeight;
+            if ( ! opts.align ) {
+                var currVbox = parseFloat(this.getAttribute('viewBox').split(/\s+/)[2]);
+                if (((x + 10) + 0.5*opts.width)*RS > currVbox ) {
+                    opts.align = 'right';
+                }
+                if ((x - 0.5*opts.width)*RS < 0) {
+                    opts.align = 'left';
+                }
+            }
+            if (opts.align) {
+                var shifter = opts.align == "right" ? -0.5 : 0.5;
+                back.setAttribute('transform', 'translate('+(shifter*opts.width*RS)+',0)');
+                pres_box.setAttribute('transform', 'translate('+(shifter*opts.width*RS)+',0)');
+                poly.setAttribute('transform', 'translate('+(0*shifter*opts.width*RS)+',0)');
+                poly.setAttribute('points', shifter > 0 ? "0,500 500,1000 0,1000" : "0,500 0,1000 -500,1000");
+                fo.setAttribute('transform', 'translate('+(shifter*opts.width*RS)+',0)');
+            }
             return callout;
         };
 
         canvas.growingMarker = function(x,y,symbol,opts) {
             var container = document.createElementNS(svgns,'svg');
-            container.setAttribute('viewBox', '-50 -100 150 300');
+            container.setAttribute('viewBox', '-50 -100 200 250');
             container.setAttribute('preserveAspectRatio', 'xMinYMin meet');
             container.setAttribute('x',x);
             container.setAttribute('y',y);
-            var the_marker = this.marker(50/RS,50/RS,50/RS,symbol,opts);
+            var the_marker = this.marker(50/RS,(50)/RS,50/RS,symbol,opts);
             container.appendChild(the_marker);
             container.contentElement = the_marker.contentElement;
             var result = this.group();
-            result.appendChild(container);
+            var positioning_group = this.group();
+            result.appendChild(positioning_group);
+            positioning_group.appendChild(container);
+            container.setAttribute('width','200');
+            container.setAttribute('height','250');
+            result.setAttribute('height','250');
+            result.setAttribute('transform','scale(1)');
+            result.setHeight = function(height) {
+                // this.setAttribute('height',height);
+                var scale_val = setHeight.call(this,height);
+                this.setAttribute('height',height);
+                var top_offset = this.offset;
+                /*
+                try {
+                    var widget_width = this.firstChild.firstChild.getBBox().width;
+                } catch (e) {
+                    console.log('getBBox() threw error in canvas.growingMarker');
+                }
+                */
+                var widget_height = parseFloat(this.firstChild.firstChild.getAttribute('height'));
+                if ( ! this.angle ) {
+                    this.angle = 0;
+                }
+                if (this.angle > 10) {
+                    centering_offset = 0;
+                }
+                if (top_offset == 0) {
+                    centering_offset = 0;
+                }
+                this.firstChild.setAttribute('transform','translate(-100,'+(top_offset*RS)+') rotate('+this.angle+',100,0)');
+            };
             return result;
         };
 
@@ -581,30 +733,40 @@ var SVGCanvas = SVGCanvas || (function() {
             };
 
             var marker = this.group();
-
+            if (! opts ) {
+                opts = {};
+            }
             var fill_color = (opts && opts.border) ? opts.border : 'rgb(0,0,0)';
+            if ( ! opts.bare_element ) {
+                marker.push(this.circle(0,-0.5*r,r));
 
-            marker.push(this.circle(0,-0.5*r,r));
+                marker.lastChild.style.fill = fill_color;
 
-            marker.lastChild.style.fill = fill_color;
+                marker.push(this.circle(0,1.5*r,r));
 
-            marker.push(this.circle(0,1.5*r,r));
+                marker.lastChild.style.fill = fill_color;
 
-            marker.lastChild.style.fill = fill_color;
-
-            var arrow = this.poly((-0.9*r*RS)+','+(0*r*RS)+' 0,'+(-2.5*r*RS)+' '+(0.9)*r*RS+','+(0*r*RS));
+                var arrow = this.poly((-0.9*r*RS)+','+(0*r*RS)+' 0,'+(-2.5*r*RS)+' '+(0.9)*r*RS+','+(0*r*RS));
 
 
-            arrow.setAttribute('style','fill:'+fill_color+';stroke-width: 0;');
-            marker.push(arrow);
+                arrow.setAttribute('style','fill:'+fill_color+';stroke-width: 0;');
+                marker.push(arrow);
+            }
             marker.setAttribute('transform','translate('+((cx)*RS)+','+0.5*cy*RS+') scale(1)');
+            marker.setHeight = setHeight;
             marker.setAttribute('height', dim.R*RS);
             if (typeof symbol == 'string') {
                 marker.contentElement = this.text_circle(0,0.5*r,1.75*r,symbol,opts);
                 marker.push(marker.contentElement);
             } else {
                 marker.contentElement = this.group();
+                if (! opts.bare_element ) {
+                    marker.contentElement.push(this.text_circle(0,0.5*r,1.75*r,"",opts));
+                }
                 if (symbol) {
+                    if ( ! opts.bare_element ) {
+                        symbol.setAttribute('transform','translate(0,'+(0.5*r*RS)+')');
+                    }
                     marker.contentElement.push(symbol);
                 }
                 marker.push(marker.contentElement);
@@ -650,12 +812,20 @@ var SVGCanvas = SVGCanvas || (function() {
 
             var back = this.circle(0,dim.CY,9/10*dim.R);
             back.setAttribute('fill','url(#simple_gradient)');
+            window.matchMedia('print').addListener(function(match) {
+                back.setAttribute('fill',match.matches ? '#aaaaaa': 'url(#simple_gradient)');
+            });
             back.setAttribute('stroke', opts.border || '#000000');
             back.setAttribute('stroke-width', (r/10)*RS);
 
             marker_group.push(back);
             var text = this.text(0,dim.CY-0.5*dim.R,txt);
-            text.setAttribute('font-size',r*RS);
+            if (txt.length >= 3) {
+                var font_size = r*RS*0.8;
+            } else {
+                var font_size = r*RS;
+            }
+            text.setAttribute('font-size',font_size);
             text.setAttribute('font-weight','bolder');
             text.setAttribute('fill','#ffffff');
             text.setAttribute('style','font-family: sans-serif; text-anchor: middle;');
@@ -665,6 +835,7 @@ var SVGCanvas = SVGCanvas || (function() {
 
             marker_group.setAttribute('transform','translate('+dim.CX*RS+', 1) scale(1)');
             marker_group.setAttribute('height', (dim.R/2)*RS );
+            marker_group.setHeight = setHeight;
             return marker_group;
         };
 
@@ -734,7 +905,7 @@ var SVGCanvas = SVGCanvas || (function() {
                 a_tspan.textContent = text;
                 a_tspan.setAttribute('dy','0');
             }
-            a_text.style.fontFamily = 'Helvetica, Verdana, Arial, Sans-serif';
+            a_text.style.fontFamily = this.font_order || 'Helvetica, Verdana, Arial, Sans-serif';
             a_text.setAttribute('x',typeof x == 'string' ? x : x * RS);
             a_text.setAttribute('y',typeof y == 'string' ? y : y * RS);        
             this.appendChild(a_text);
@@ -778,6 +949,39 @@ var SVGCanvas = SVGCanvas || (function() {
             }));
             g.setAttribute('transform','translate('+x*RS+','+y*RS+')');
             return g;
+        };
+
+        // Calculate the bounding box of an element with respect to its parent element
+        // Thanks to http://stackoverflow.com/questions/10623809/get-bounding-box-of-element-accounting-for-its-transform
+        canvas.transformedBoundingBox = function(el){
+            var bb  = el.getBBox(),
+                svg = el.ownerSVGElement,
+                m   = el.getTransformToElement(el.parentNode);
+            // Create an array of all four points for the original bounding box
+            var pts = [
+                svg.createSVGPoint(), svg.createSVGPoint(),
+                svg.createSVGPoint(), svg.createSVGPoint()
+            ];
+            pts[0].x=bb.x;          pts[0].y=bb.y;
+            pts[1].x=bb.x+bb.width; pts[1].y=bb.y;
+            pts[2].x=bb.x+bb.width; pts[2].y=bb.y+bb.height;
+            pts[3].x=bb.x;          pts[3].y=bb.y+bb.height;
+
+            // Transform each into the space of the parent,
+            // and calculate the min/max points from that.
+            var xMin=Infinity,xMax=-Infinity,yMin=Infinity,yMax=-Infinity;
+            pts.forEach(function(pt){
+                pt = pt.matrixTransform(m);
+                xMin = Math.min(xMin,pt.x);
+                xMax = Math.max(xMax,pt.x);
+                yMin = Math.min(yMin,pt.y);
+                yMax = Math.max(yMax,pt.y);
+            });
+
+            // Update the bounding box with the new values
+            bb.x = xMin; bb.width  = xMax-xMin;
+            bb.y = yMin; bb.height = yMax-yMin;
+            return bb;
         };
         
         canvas.set = function() {

@@ -58,14 +58,11 @@ MASCP.GelMapReader.Result.prototype.getPeptides = function()
 {
     var content = null;
 
-    if (this._peptides) {
-        return this._peptides;
+    if (this.maps[0].peptides) {
+        return this.maps[0].peptides;
+    } else {
+        return;
     }
-    
-    
-    this._peptides = peptides;
-    
-    return peptides;
 };
 
 MASCP.GelMapReader.Result.prototype._cleanSequence = function(sequence)
@@ -82,7 +79,7 @@ MASCP.GelMapReader.prototype.setupSequenceRenderer = function(sequenceRenderer)
 
     var css_block = '.active .overlay { background: #ff5533; } .active a { color: #000000; text-decoration: none !important; }  :indeterminate { background: #ff0000; } .tracks .active { background: #0000ff; } .inactive a { text-decoration: none; } .inactive { display: none; }';
     
-    MASCP.registerLayer(controller_name,{ 'fullname' : 'GelMap', 'color' : '#aaaaff', 'css' : css_block });
+    MASCP.registerLayer(controller_name,{ 'fullname' : 'GelMap', 'color' : '#aaaaff', 'css' : css_block, 'hover_peptides' : true });
 
     if (sequenceRenderer.createGroupController) {
         sequenceRenderer.createGroupController('gelmap_controller','gelmap_experimental');
@@ -102,7 +99,7 @@ MASCP.GelMapReader.prototype.setupSequenceRenderer = function(sequenceRenderer)
     this.bind('resultReceived', function() {
         for (var maps = this.result.maps, j = maps.length - 1; j >= 0; j--) {
             var a_map = maps[j];
-            MASCP.registerLayer('gelmap_map_'+a_map.id, { 'fullname': a_map.title, 'group' : 'gelmap_experimental', 'color' : '#aaaaff', 'css' : css_block });
+            MASCP.registerLayer('gelmap_map_'+a_map.id, { 'fullname': a_map.title, 'group' : 'gelmap_experimental', 'color' : '#aaaaff', 'css' : css_block, 'hover_peptides' : true });
             MASCP.getLayer('gelmap_map_'+a_map.id).href = a_map.url;
             var peps = sort_unique(maps[j].peptides);
 

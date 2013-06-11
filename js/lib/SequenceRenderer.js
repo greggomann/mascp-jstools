@@ -120,15 +120,19 @@ MASCP.registerGroup = function(groupName, options)
  * @see MASCP.Layer
  * @see MASCP.event:layerRegistered
  */
-MASCP.registerLayer = function(layerName, options)
+MASCP.registerLayer = function(layerName, options, renderers)
 {
     if ( ! this.layers ) {
         this.layers = {};
     }
+    if ( ! renderers ) {
+        renderers = [];
+    }
+
     if (this.layers[layerName]) {
-        if (this.layers[layerName].disabled) {
+        if (this.layers[layerName].disabled || renderers.length > 0) {
             this.layers[layerName].disabled = false;
-            bean.fire(MASCP,'layerRegistered',[this.layers[layerName]]);
+            bean.fire(MASCP,'layerRegistered',[this.layers[layerName]].concat(renderers));
         }
         return this.layers[layerName];
     }
@@ -171,8 +175,7 @@ MASCP.registerLayer = function(layerName, options)
         jQuery('<style type="text/css">'+layerCss+'</style>').appendTo('head');
     }
     layer.layer_id = new Date().getMilliseconds();
-    
-    bean.fire(MASCP,'layerRegistered',[layer]);
+    bean.fire(MASCP,'layerRegistered',[layer].concat(renderers));
     
     return layer;
 };
@@ -259,32 +262,29 @@ MASCP.SequenceRenderer = (function() {
                         });
                     }
                 }
-
                 for (i = ((renderer_track_order || []).length - 1); i >= 0; i--) {
                     if (track_order.indexOf(renderer_track_order[i]) < 0) {
                         this.hideLayer(renderer_track_order[i]);
                         this.hideGroup(renderer_track_order[i]);
-                        jQuery(MASCP.getLayer(renderer_track_order[i])).trigger('removed');
-                        jQuery(MASCP.getGroup(renderer_track_order[i])).trigger('removed');
+                        jQuery(MASCP.getLayer(renderer_track_order[i])).trigger('removed',[renderer]);
+                        jQuery(MASCP.getGroup(renderer_track_order[i])).trigger('removed',[renderer]);
                     }
                 }
                 renderer_track_order = track_order;
+
                 if (this.refresh) {
                     this.refresh(true);
                 }
+                jQuery(renderer).trigger('orderChanged', [ track_order ] );
+
             }
         };
-
-        if (renderer.__defineSetter__) {    
-            renderer.__defineSetter__("trackOrder", accessors.setTrackOrder);
-            renderer.__defineGetter__("trackOrder", accessors.getTrackOrder);
-        }
 
         if (MASCP.IE) {
             renderer.setTrackOrder = accessors.setTrackOrder;
         }
 
-        if ((typeof Object.defineProperty == 'function') && MASCP.IE && ! MASCP.IE8 ) {
+        if ((typeof Object.defineProperty == 'function') && ! MASCP.IE8 ) {
             Object.defineProperty(renderer,"trackOrder", {
                 get : accessors.getTrackOrder,
                 set : accessors.setTrackOrder
@@ -1113,6 +1113,7 @@ MASCP.SequenceRenderer.prototype.withoutRefresh = function(func)
 {
     var curr_refresh = this.refresh;
     this.refresh = function() {};
+    this.refresh.suspended = true;
     func.apply(this);
     this.refresh = curr_refresh;
 };
@@ -1147,8 +1148,8 @@ MASCP.SequenceRenderer.prototype.bind = function(ev,func)
     jQuery(this).bind(ev,func);
 };
 
-MASCP.SequenceRenderer.prototype.trigger = function(ev)
+MASCP.SequenceRenderer.prototype.trigger = function(ev,args)
 {
-    jQuery(this).trigger(ev);
+    jQuery(this).trigger(ev,args);
 };
 
