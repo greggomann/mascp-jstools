@@ -490,9 +490,11 @@ var accessors = {
 
 
 
-if (GOMap.Diagram.prototype.__defineSetter__) {
-    GOMap.Diagram.prototype.__defineSetter__("zoom", accessors.setZoom);
-    GOMap.Diagram.prototype.__defineGetter__("zoom", accessors.getZoom);
+if (Object.defineProperty && ! MASCP.IE8) {
+    Object.defineProperty(GOMap.Diagram.prototype,"zoom", {
+        get : accessors.getZoom,
+        set : accessors.setZoom
+    });
 }
 
 })();
@@ -1090,6 +1092,7 @@ GOMap.Diagram.Dragger.prototype.applyToElement = function(targetElement) {
       if (document.createEvent) {
           self.clicktimeout = setTimeout(function() {
               var evObj = document.createEvent('Events');
+              self.clicktimeout = null;
               evObj.initEvent('panstart',false,true);
               targ.dispatchEvent(evObj);
           },200);
@@ -1607,6 +1610,42 @@ GOMap.Diagram.addZoomControls = function(zoomElement,min,max,precision,value) {
     this.addScrollZoomControls(zoomElement,controls_container,precision);
 
     return controls_container;
+};
+
+GOMap.Diagram.addScrollBar = function(target,controlElement,scrollContainer) {
+    var scroller = document.createElement('div');
+    while (scrollContainer.childNodes.length > 0) {
+        scrollContainer.removeChild(scrollContainer.firstChild);
+    }
+    scrollContainer.appendChild(scroller);
+    if ( ! scrollContainer.style.position ) {
+        scrollContainer.style.position = 'absolute';
+    }
+    scrollContainer.style.overflowX = 'scroll';
+    scrollContainer.style.overflowY = 'hidden';
+
+    scroller.style.position = 'absolute';
+    scroller.style.left = '0px';
+    scroller.style.width = '100%';
+    scroller.style.height= '100%';
+
+    bean.remove(scrollContainer,'scroll');
+    bean.remove(scrollContainer,'mouseenter');
+    bean.add(scrollContainer,'mouseenter',function() {
+        scrollContainer.scrollLeft += 1;
+        scrollContainer.scrollLeft -= 1;
+    });
+    bean.add(scrollContainer,'scroll',function() {
+        bean.fire(controlElement,'panstart');
+        target.setLeftPosition(parseInt(scrollContainer.scrollLeft * target.getTotalLength() / scroller.clientWidth));
+        bean.fire(controlElement,'panend');
+    });
+    bean.add(controlElement,'pan',function() {
+        var size = 100*target.getTotalLength() / (target.getVisibleLength());
+        scroller.style.width = parseInt(size)+'%';
+        var left_shift = parseInt(scroller.clientWidth * (target.getLeftPosition() / target.getTotalLength() ));
+        scroll_box.scrollLeft = left_shift;
+    });
 };
 
 /**

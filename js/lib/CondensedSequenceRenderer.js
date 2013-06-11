@@ -14,13 +14,7 @@ MASCP.CondensedSequenceRenderer = function(sequenceContainer) {
     var self = this;
 
     MASCP.CondensedSequenceRenderer.Zoom(self);
-    
-    // When we have a layer registered with the global MASCP object
-    // add a track within this rendererer.
-    bean.add(MASCP,'layerRegistered', function(layer) {
-        self.addTrack(layer);
-    });
-    
+
     // We want to unbind the default handler for sequence change that we get from
     // inheriting from CondensedSequenceRenderer
     jQuery(this).unbind('sequenceChange');
@@ -49,6 +43,12 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
 (function(clazz) {
     var createCanvasObject = function() {
         var renderer = this;
+        this.win = function() {
+            if (this._container && this._container.ownerDocument && this._container.ownerDocument.defaultView) {
+                return this._container.ownerDocument.defaultView;
+            }
+            return null;
+        };
 
         if (this._object) {
             if (typeof svgweb != 'undefined') {
@@ -60,9 +60,8 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
             this._object = null;
         }
         var canvas;
-
         if ( document.implementation.hasFeature("http://www.w3.org/TR/SVG11/feature#BasicStructure", "1.1") ) {
-            var native_canvas = document.createElementNS(svgns,'svg');
+            var native_canvas = this.win().document.createElementNS(svgns,'svg');
             native_canvas.setAttribute('width','100%');
             native_canvas.setAttribute('height','100%');
             this._container.appendChild(native_canvas);
@@ -78,11 +77,17 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
         canvas.addEventListener('load',function() {
             var container_canv = this;
             SVGCanvas(container_canv);
+            if (renderer.font_order) {
+                container_canv.font_order = renderer.font_order;
+            }
             var group = container_canv.makeEl('g');
         
             var canv = container_canv.makeEl('svg');
             canv.RS = renderer._RS;
             SVGCanvas(canv);
+            if (renderer.font_order) {
+                canv.font_order = renderer.font_order;
+            }
             group.appendChild(canv);
             container_canv.appendChild(group);
 
@@ -217,6 +222,37 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
             renderer._object = this;
             renderer._canvas = canv;
             renderer._canvas._canvas_height = 0;
+
+            // Track and store mouse cursor position in SVG canvas coordinates for the hover popup event
+            document.documentElement.addEventListener('mousemove',function(evt) {
+                // Here we address browser cross-compatibility issues
+                var posx = 0;
+                var posy = 0;
+                if (!evt) var evt = window.event;
+                if (evt.pageX || evt.pageY) 	{
+                    posx = evt.pageX;
+                    posy = evt.pageY;
+                }
+                else if (evt.clientX || evt.clientY) 	{
+                    posx = evt.clientX + document.body.scrollLeft
+                        + document.documentElement.scrollLeft;
+                    posy = evt.clientY + document.body.scrollTop
+                        + document.documentElement.scrollTop;
+                }
+                // Now posx and posy contain the mouse position relative to the document
+
+                // Create an SVGPoint object and transform its coordinates
+                var pt = canv.createSVGPoint();
+                pt.x = posx;
+                pt.y = posy;
+                
+                canv.cursorPos = pt;
+                
+                // Determine quadrant of mouse cursor and set popup offset accordingly
+                canv.clientX = evt.clientX;
+                
+            }, false);
+
             jQuery(renderer).trigger('svgready');
         },false);
     
@@ -272,6 +308,7 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
         var big_ticks = canvas.set();
         var little_ticks = canvas.set();
         var big_labels = canvas.set();
+        var huge_labels = canvas.set();
         var little_labels = canvas.set();
         var minor_mark = 10;
         var major_mark = 20;
@@ -280,7 +317,10 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
             minor_mark = 100;
             major_mark = 200;
         }
-    
+        if (this.sequence.length > 1000) {
+            minor_mark = 20;
+            major_mark = 40;
+        }
         for ( i = 0; i < (lineLength/5); i++ ) {
 
             if ( (x % minor_mark) === 0) {
@@ -294,7 +334,9 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
             } else if (( x % minor_mark ) === 0 && x !== 0) {
                 little_labels.push(canvas.text(x,7,""+(x)));
             }
-
+            if ( (x % (100*parseInt(this.sequence.length / 1000))) === 0 && x !== 0) {
+                huge_labels.push(canvas.text(x,30,""+(x)));
+            }
             x += 5;
         }
     
@@ -322,6 +364,8 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
         little_ticks.hide();
         little_labels.hide();
 
+        huge_labels.hide();
+
         canvas.addEventListener('zoomChange', function() {
                if (this.zoom > 3.6) {
                    little_ticks.hide();
@@ -330,6 +374,7 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
                    little_labels.attr({'font-size':2*RS+'pt'});
                    big_labels.attr({'font-size': 2*RS+'pt'});
                    axis.hide();
+                   huge_labels.hide();
                    if (this._visibleTracers && this._visibleTracers()) {
                        this._visibleTracers().show();
                    }
@@ -344,10 +389,11 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
                    little_ticks.attr({'stroke-width':0.3*RS+'pt'});
                    little_ticks.show();
                    little_labels.show();
+                   huge_labels.hide();
                    if (this.tracers) {
                        this.tracers.hide();
                    }
-               } else {
+               } else if (this.zoom > 0.2) {
                    if (this.tracers) {
                        this.tracers.hide();
                    }
@@ -359,8 +405,25 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
                    big_labels.attr({'font-size':7*RS+'pt','y':5*RS});
                    little_ticks.hide();
                    little_labels.hide();
+                   huge_labels.hide();
+               } else {
+                   if (this.tracers) {
+                       this.tracers.hide();
+                   }
+                   axis.hide();
+                   big_ticks.hide();
+                   big_labels.hide();
+
+                   huge_labels.show();
+                   huge_labels.attr({'font-size':parseInt(30*2*RS*0.2/canvas.zoom)+'pt','y':parseInt(40*2*RS*0.2/canvas.zoom)});
+                   little_ticks.hide();
+                   little_labels.hide();
                }
         },false);
+    };
+    clazz.prototype.setLeftVisibleResidue = function(val) {
+        var self = this;
+        self._canvas.setCurrentTranslateXY((self._canvas.width.baseVal.value * (1 - (val / (self.sequence.length+self.padding+2)))) - self._canvas.width.baseVal.value,0);
     };
 
     clazz.prototype.leftVisibleResidue = function() {
@@ -434,6 +497,12 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
             defs.appendChild(canv.make_gradient('right_fade','100%','0%',['#ffffff','#ffffff'], [0,1]));
             defs.appendChild(canv.make_gradient('red_3d','0%','100%',['#CF0000','#540000'], [1,1]));
         
+            renderer.gradients = [];
+            renderer.add3dGradient = function(color) {
+                defs.appendChild(canv.make_gradient('grad_'+color,'0%','100%',[color,'#ffffff',color],[1,1,1] ));
+                renderer.gradients.push(color);
+            };
+
             var shadow = canv.makeEl('filter',{
                 'id':'drop_shadow',
                 'filterUnits':'objectBoundingBox',
@@ -501,11 +570,18 @@ MASCP.CondensedSequenceRenderer.prototype = new MASCP.SequenceRenderer();
             drawAminoAcids.call(this,canv);
             renderer._layer_containers = {};
             renderer.enablePrintResizing();
+
+            // When we have a layer registered with the global MASCP object
+            // add a track within this rendererer.
+            bean.add(MASCP,'layerRegistered', function(layer,rend) {
+                if (! rend || rend === renderer) {
+                    renderer.addTrack(layer);
+                }
+            });
+
             jQuery(renderer).trigger('sequenceChange');
         });
-    
         var canvas = createCanvasObject.call(this);
-    
         if (this._canvas) {
             has_canvas = true;
         } else {
@@ -626,10 +702,11 @@ var addElementToLayer = function(layerName,opts) {
         return;
     }
 
-    var bobble = canvas.circle(this._index+0.3,10,0.25);
+    var bobble = canvas.circle(this._index+0.5,10,0.25);
     bobble.setAttribute('visibility','hidden');
     bobble.style.opacity = '0.4';
-    var tracer = canvas.rect(this._index+0.3,10,0.05,0);
+    var tracer = canvas.rect(this._index+0.5,10,0.05,0);
+    tracer._index = this._index;
     tracer.style.strokeWidth = '0';
     tracer.style.fill = MASCP.layers[layerName].color;
     tracer.setAttribute('visibility','hidden');
@@ -658,6 +735,30 @@ var addElementToLayer = function(layerName,opts) {
     tracer_marker.setAttribute('transform','translate('+((this._index + 0.5) * this._renderer._RS) +',0.01) scale('+scale+')');
     tracer_marker.setAttribute('height','250');
     tracer_marker.firstChild.setAttribute('transform', 'translate(-100,0) rotate(0,100,0.001)');
+    var renderer = this._renderer;
+    tracer.setHeight = function(height) {
+        if (tracer.getAttribute('visibility') == 'hidden') {
+            return;
+        }
+
+        var transform_attr = tracer_marker.getAttribute('transform');
+        var matches = /translate\(.*[,\s](.*)\) scale\((.*)\)/.exec(transform_attr);
+        if (matches[1] && matches[2]) {
+            var scale = parseFloat(matches[2]);
+            var y = parseFloat(matches[1]);
+            var new_height = y + scale*(((tracer_marker.offset || 0) * 50) + 125) - parseInt(this.getAttribute('y'));
+            this.setAttribute('height',new_height);
+        } else {
+            this.setAttribute('height',height);
+        }
+    };
+
+    if (typeof opts.offset == 'undefined' || opts.offset === null) {
+        // tracer_marker.offset = 2.5*this._renderer._layer_containers[layerName].track_height;
+    } else {
+        tracer_marker.offset = opts.offset;
+    }
+
 
     // tracer_marker.setAttribute('transform','scale(0.5)');
     // tracer_marker.zoom_level = 'text';
@@ -669,6 +770,36 @@ var addElementToLayer = function(layerName,opts) {
     canvas.tracers.push(tracer);
     
     return [tracer,tracer_marker,bobble];
+};
+
+// Function for mouseover events on peptide objects, aka BoxOverlays, to trigger hover popup
+var mouseOver = function(setting, target, canvas, popupData) {
+    if (setting == 'on') {
+        target.timerID = setTimeout( function() {
+            // Transform mouse cursor location to SVG canvas coordinates
+            canvas.cursorPos = canvas.cursorPos.matrixTransform(canvas.parentNode.getCTM().inverse());
+            // Create popup
+            target.popup = canvas.popup(canvas.cursorPos.x, canvas.cursorPos.y, canvas.clientX, popupData);
+            bean.add(target.popup, 'mouseenter', function() { canvas.withinPopup = true; });
+            bean.add(target.popup, 'mouseleave', function() {
+                canvas.withinPopup = false;
+                setTimeout( function() {
+                    var testTarget = document.getElementById('popup');
+                    // Test for presence of popup and mouseover in the popup itself before removing
+                    if (typeof(testTarget) != 'undefined' && testTarget != null && ! canvas.withinPopup === true) { canvas.parentNode.removeChild(target.popup); }
+                }, 100); 
+            });
+        }, 500);
+    }
+    if (setting == 'off') {
+        if (target.timerID) { clearTimeout(target.timerID); }
+        // Test for presence of a popup and a mouseover event in the popup itself before removing
+        setTimeout( function() {
+            var testTarget = document.getElementById('popup');
+            if (typeof(testTarget) != 'undefined' && testTarget != null && ! canvas.withinPopup === true) { canvas.parentNode.removeChild(target.popup); }
+        }, 20);
+    }
+    return;
 };
 
 var addBoxOverlayToElement = function(layerName,width,fraction) {
@@ -690,24 +821,81 @@ var addBoxOverlayToElement = function(layerName,width,fraction) {
         return;
     }
 
-
+    var peptideSequence = '';
+    // Initialize object literal that passes data to popup
+    var popupData = {};
     var rect =  canvas.rect(-0.25+this._index,60,width || 1,4);
+    rect.position_start = this._index;
+    rect.position_end = this._index + width;
+
     var rect_x = parseFloat(rect.getAttribute('x'));
     var rect_max_x = rect_x + parseFloat(rect.getAttribute('width'));
     var container = this._renderer._layer_containers[layerName];
+
+    var exitLoop = false;
+
+    // Loop through rect objects already in layer; if current peptide overlaps, combine
     for (var i = 0; i < container.length; i++) {
         var el_x = parseFloat(container[i].getAttribute('x'));
         var el_max_x = el_x + parseFloat(container[i].getAttribute('width'));
-        if ((el_x <= rect_x && rect_x <= el_max_x) ||
-            (rect_x <= el_x && el_x <= rect_max_x)) {
-                if (container[i].style.opacity != fraction) {
-                    continue;
-                }
-                container[i].setAttribute('x', ""+Math.min(el_x,rect_x));
-                container[i].setAttribute('width', ""+(Math.max(el_max_x,rect_max_x)-Math.min(el_x,rect_x)) );
-                rect.parentNode.removeChild(rect);
-                return container[i];
+        if ((el_x <= rect_x && rect_x <= el_max_x) || (rect_x <= el_x && el_x <= rect_max_x)) {
+            if (container[i].style.opacity != fraction) {
+                continue;
             }
+            // Update rect object position and size
+            var newX = Math.min(el_x,rect_x);
+            var newWidth = Math.max(el_max_x,rect_max_x)-Math.min(el_x,rect_x);
+            container[i].setAttribute('x', ""+newX);
+            container[i].setAttribute('width', ""+newWidth);
+
+            // Update peptide sequence indeces
+            var newStart = Math.min(container[i].position_start,this._index);
+            var newEnd = Math.max(container[i].position_end,this._index+width);
+            container[i].position_start = newStart;
+            container[i].position_end = newEnd;
+            peptideSequence = this._renderer.sequence.slice(newStart, newEnd);
+            popupData['Sequence'] = peptideSequence;
+
+            // Bind mouseOver function with updated sequence information
+            bean.remove(container[i], 'mouseenter');
+            bean.add(container[i], 'mouseenter', function() { mouseOver('on', container[i], canvas, popupData); });
+            rect.parentNode.removeChild(rect);
+            
+            // Check other box overlay objects for additional overlap
+            var noOverlap = false;
+            var persistentBoxOverlay = container[i];
+            do {
+                for (var j = 0; j < container.length; j++) {
+                    var el_x_2 = parseFloat(container[j].getAttribute('x'));
+                    var el_max_x_2 = el_x_2 + parseFloat(container[j].getAttribute('width'));
+                    if (((el_x_2 <= newX && newX <= el_max_x_2) || (newX <= el_x_2 && el_x_2 <= (newX+newWidth) )) && !(el_x_2 == newX && el_max_x_2 == newX+newWidth)) {
+                        // Update rect object position and size
+                        newX = Math.min(el_x_2,newX);
+                        newWidth = Math.max(el_max_x_2,(newX+newWidth))-Math.min(el_x_2,newX);
+                        persistentBoxOverlay.setAttribute('x', ""+newX);
+                        persistentBoxOverlay.setAttribute('width', ""+newWidth);
+
+                        // Update peptide sequence indeces
+                        newStart = Math.min(persistentBoxOverlay.position_start,container[j].position_start);
+                        newEnd = Math.max(persistentBoxOverlay.position_end,container[j].position_end);
+                        persistentBoxOverlay.position_start = newStart;
+                        persistentBoxOverlay.position_end = newEnd;
+                        peptideSequence = this._renderer.sequence.slice(newStart, newEnd);
+                        popupData['Sequence'] = peptideSequence;
+
+                        // Bind mouseOver function with updated sequence information
+                        bean.remove(persistentBoxOverlay, 'mouseenter');
+                        bean.add(persistentBoxOverlay, 'mouseenter', function() { mouseOver('on', persistentBoxOverlay, canvas, popupData); });
+                        // Remove redundant BoxOverlay
+                        container.splice(j, 1);
+                        j = 0;
+                    }
+                    else if (j + 1 == container.length) { noOverlap = true; }
+                }
+            } while (noOverlap == false);
+            
+            return persistentBoxOverlay;
+        }
     }
     this._renderer._layer_containers[layerName].push(rect);
     rect.setAttribute('class',layerName);
@@ -715,9 +903,106 @@ var addBoxOverlayToElement = function(layerName,width,fraction) {
     rect.setAttribute('visibility', 'hidden');
     rect.style.opacity = fraction;
     rect.setAttribute('fill',MASCP.layers[layerName].color);
-    rect.position_start = this._index;
-    rect.position_end = this._index + width;
+    rect.setAttribute('cursor','default');
+
+    // Bind mouseOver function to peptide objects
+    peptideSequence = this._renderer.sequence.slice(this._index, this._index+width);
+    popupData['Sequence'] = peptideSequence;
+    bean.add(rect, 'mouseenter', function() { mouseOver('on', rect, canvas, popupData); });
+    bean.add(rect, 'mouseleave', function() { mouseOver('off', rect, canvas, popupData); });
+
     return rect;
+};
+
+var addTextToElement = function(layerName,width,opts) {
+    var canvas = this._renderer._canvas;
+    if ( ! canvas ) {
+        var orig_func = arguments.callee;
+        var self = this;
+        this._renderer.bind('sequencechange',function() {
+            this._renderer.unbind('sequencechange',arguments.callee);
+            orig_func.call(self,layerName,width,opts);
+        });
+        log("Delaying rendering, waiting for sequence change");
+        return;
+    }
+    if ( ! opts ) {
+        opts = {};
+    }
+    var height = this._renderer._layer_containers[layerName].trackHeight || 4;
+    var text = canvas.text(this._index,0,opts.txt || "Text");
+    text.setAttribute('font-size',0.75*height*this._renderer._RS);
+    text.setAttribute('font-weight','bolder');
+    text.setAttribute('fill','#ffffff');
+    text.setAttribute('stroke','#000000');
+    text.setAttribute('stroke-width','5');
+    text.setAttribute('style','font-family: '+canvas.font_order);
+    text.firstChild.setAttribute('dy','2ex');
+    text.setAttribute('text-anchor','middle');
+    text.setHeight = function(height) {
+        text.setAttribute('font-size', 0.75*height);
+    };
+    this._renderer._layer_containers[layerName].push(text);
+    return text;
+}
+
+var addShapeToElement = function(layerName,width,opts) {
+    var canvas = this._renderer._canvas;
+
+    if ( ! canvas ) {
+        var orig_func = arguments.callee;
+        var self = this;
+        this._renderer.bind('sequencechange',function() {
+            this._renderer.unbind('sequencechange',arguments.callee);
+            orig_func.call(self,layerName,width,opts);
+        });
+        log("Delaying rendering, waiting for sequence change");
+        return;
+    }
+
+    var methods = {
+        "pentagon" : canvas.pentagon,
+        "hexagon"  : canvas.hexagon,
+        "rectangle": canvas.rect,
+        "ellipse"  : canvas.ellipticalRect,
+        "roundrect": function(x,y,width,height) {
+            return canvas.roundRect(x,y,width,height,0.25*height);
+        }
+    }
+    if ( ! opts.rotate ) {
+        opts.rotate = 0;
+    }
+    var shape = null;
+    if (opts.shape in methods) {
+        shape = methods[opts.shape].call(canvas,this._index,60,width || 1,opts.height || 4,opts.rotate);
+    } else {
+        return;
+    }
+    if (opts.offset && opts.shape == "roundrect") {
+        var x_pos = shape.getAttribute('x');
+        var y_pos = shape.getAttribute('y');
+        shape.setAttribute('transform','translate('+x_pos+','+y_pos+')');
+        shape.setAttribute('x','0');
+        var offset_val = opts.offset - 4/3;
+        shape.setAttribute('y',offset_val*(opts.height || 4)*this._renderer._RS);
+        shape.setHeight = function(height) {
+            if ( ! this._orig_stroke_width ) {
+                this._orig_stroke_width = parseInt(this.getAttribute('stroke-width'));
+            }
+            shape.setAttribute('y', offset_val*height);
+            shape.setAttribute('height',height);
+            shape.setAttribute('stroke-width',this._orig_stroke_width/canvas.zoom);
+        };
+    }
+
+    this._renderer._layer_containers[layerName].push(shape);
+    shape.setAttribute('class',layerName);
+    shape.style.strokeWidth = '0px';
+    shape.setAttribute('visibility', 'hidden');
+    shape.setAttribute('fill',opts.fill || MASCP.layers[layerName].color);
+    shape.position_start = this._index;
+    shape.position_end = this._index + width;
+    return shape;
 };
 
 var addElementToLayerWithLink = function(layerName,url,width) {
@@ -751,7 +1036,9 @@ var addCalloutToLayer = function(layerName,element,opts) {
     
     if (typeof element == 'string') {
         var a_el = document.createElement('div');
-        a_el.innerHTML = renderer.fillTemplate(element,opts);
+        renderer.fillTemplate(element,opts,function(err,el) {
+            a_el.innerHTML = el;
+        });
         element = a_el;
     }
     
@@ -765,10 +1052,9 @@ var addCalloutToLayer = function(layerName,element,opts) {
         log("Delaying rendering, waiting for sequence change");
         return;
     }
-    
-    var callout = canvas.callout(this._index+0.5,0.01,element,{'width' : opts.width || 100 ,'height': opts.height || 100 });
-    callout.setAttribute('height',10*this._renderer._RS);
-    this._renderer._canvas_callout_padding = Math.max((opts.height || 100),this._renderer._canvas_callout_padding||0);
+    var callout = canvas.callout(this._index+0.5,0.01,element,{'width' : (10*opts.width) || 100 ,'height': (opts.height * 10) || 100, 'align' : opts.align });
+    callout.setAttribute('height',this._renderer._RS*10);
+    this._renderer._canvas_callout_padding = Math.max(((10*opts.height) || 100),this._renderer._canvas_callout_padding||0);
     this._renderer._layer_containers[layerName].push(callout);
     callout.clear = function() {
         var cont = renderer._layer_containers[layerName];
@@ -826,7 +1112,7 @@ var addAnnotationToLayer = function(layerName,width,opts) {
 
     var height = opts.height || this._renderer._layer_containers[layerName].track_height;
 
-    var offset = this._renderer._RS * height / 2; //this._renderer._RS * height / 2;
+    var offset = height / 2; //this._renderer._RS * height / 2;
     var blob = all_annotations[layerName][blob_id] ? all_annotations[layerName][blob_id] : canvas.growingMarker(0,0,opts.content,opts);
 
     if (opts.angle == 'auto') {
@@ -842,7 +1128,7 @@ var addAnnotationToLayer = function(layerName,width,opts) {
         blob_id = this._index+'_'+opts.content;
         blob_exists = (typeof all_annotations[layerName][blob_id]) !== 'undefined';
         blob = all_annotations[layerName][blob_id] ? all_annotations[layerName][blob_id] : canvas.growingMarker(0,offset,opts.content,opts);
-    }    
+    }
     
     blob.setAttribute('transform','translate('+((this._index + 0.5) * this._renderer._RS) +',0.01) scale(1)');
     blob.setAttribute('height','250');
@@ -854,20 +1140,21 @@ var addAnnotationToLayer = function(layerName,width,opts) {
         blob._value = 0;
         this._renderer._layer_containers[layerName].push(blob);
         if (typeof opts.offset == 'undefined' || opts.offset === null) {
-           opts.offset = height / 2;
+            blob.offset = 0*height;
+        } else {
+            blob.offset = opts.offset;
         }
-        blob.offset = opts.offset;
 
         blob.height = height;
         if ( ! opts.height ) {
-           this._renderer._layer_containers[layerName].fixed_track_height = height;
+            this._renderer._layer_containers[layerName].fixed_track_height = height;
         } else {
             var old_set_height = blob.setHeight;
-            blob.setHeight = function(height) { 
+            blob.setHeight = function(hght) {
                 if (arguments.callee.caller != renderer.redrawAnnotations) {
                     return;
                 }
-                return old_set_height.call(this,height);
+                return old_set_height.call(this,hght);
             };
         }
     }
@@ -879,9 +1166,18 @@ var addAnnotationToLayer = function(layerName,width,opts) {
         bobble.style.opacity = '0.4';
 
         var tracer = canvas.rect(this._index+0.5,10+height,0.05,0);
+        tracer._index = this._index;
         tracer.style.strokeWidth = '0px';
         tracer.style.fill = '#777777';
         tracer.setAttribute('visibility','hidden');
+        var theight = this._renderer._layer_containers[layerName].track_height;
+        var height_offset = (10*blob.offset);
+        if (! opts.height && ! opts.offset) {
+            height_offset = this._renderer._layer_containers[layerName].fixed_track_height * 0.5 * this._renderer._RS;
+        }
+        tracer.setHeight = function(hght) {
+            tracer.setAttribute('height', hght+height_offset);
+        }
         canvas.insertBefore(tracer,canvas.firstChild.nextSibling);
     
         if ( ! this._renderer._layer_containers[layerName].tracers) {
@@ -906,6 +1202,8 @@ var addAnnotationToLayer = function(layerName,width,opts) {
 MASCP.CondensedSequenceRenderer.prototype._extendElement = function(el) {
     el.addToLayer = addElementToLayer;
     el.addBoxOverlay = addBoxOverlayToElement;
+    el.addShapeOverlay = addShapeToElement;
+    el.addTextOverlay = addTextToElement;
     el.addToLayerWithLink = addElementToLayerWithLink;
     el.addAnnotation = addAnnotationToLayer;
     el.callout = addCalloutToLayer;
@@ -964,6 +1262,8 @@ MASCP.CondensedSequenceRenderer.prototype.addTextTrack = function(seq,container)
             a_text = canvas.text(0,12,document.createTextNode(seq.substr(0,max_length)));
             a_text.setAttribute('textLength',RS*max_length);
         }
+        canvas.insertBefore(a_text,canvas.firstChild.nextSibling);
+
         a_text.style.fontFamily = "'Lucida Console', 'Courier New', Monaco, monospace";
         a_text.setAttribute('lengthAdjust','spacing');
         a_text.setAttribute('text-anchor', 'start');
@@ -995,23 +1295,30 @@ MASCP.CondensedSequenceRenderer.prototype.addTextTrack = function(seq,container)
         }
         if ((start + max_length) >= seq.length) {
             start = seq.length - max_length;
+            if (start < 0) {
+                start = 0;
+            }
         }
         a_text.replaceChild(document.createTextNode(seq.substr(start,max_length)),a_text.firstChild);
         a_text.setAttribute('dx',5+((start)*RS));
-    };
-    
-    canvas.addEventListener('panstart', function() {
-        if (amino_acids_shown) {
-            amino_acids.attr( { 'display' : 'none'});
+        if (MASCP.IE) {
+            a_text.setAttribute('textLength',parseInt(5+((start)*RS))+(max_length*RS));
         }
+    };
+    if ( ! canvas.panevents ) {
+        canvas.addEventListener('panstart', function() {
+            if (amino_acids_shown) {
+                amino_acids.attr( { 'display' : 'none'});
+            }
+        },false);
         bean.add(canvas,'panend', function() {
             if (amino_acids_shown) {
                 amino_acids.attr( {'display' : 'block'} );
                 update_sequence();
             }
-            bean.remove(canvas,'panend',arguments.callee);
         });
-    },false);
+        canvas.panevents = true;
+    }
        
     canvas.addEventListener('zoomChange', function() {
        if (canvas.zoom > 3.6) {
@@ -1019,8 +1326,12 @@ MASCP.CondensedSequenceRenderer.prototype.addTextTrack = function(seq,container)
            amino_acids.attr({'display' : 'block'});
            amino_acids_shown = true;
            update_sequence();
-       } else {
+       } else if (canvas.zoom > 0.2) {
            renderer._axis_height = 30;
+           amino_acids.attr({'display' : 'none'});
+           amino_acids_shown = false;
+       } else {
+           renderer._axis_height = parseInt(60 * 2 * (0.2 / canvas.zoom));
            amino_acids.attr({'display' : 'none'});   
            amino_acids_shown = false;        
        }
@@ -1092,7 +1403,6 @@ MASCP.CondensedSequenceRenderer.prototype.redrawAnnotations = function(layerName
     
     var max_value = 0;
     // var height = this._layer_containers[layerName].fixed_track_height || this._layer_containers[layerName].track_height;
-    var offset = 0;
     for (blob_idx in all_annotations[layerName]) {
         if (all_annotations[layerName].hasOwnProperty(blob_idx)) {
             if ( all_annotations[layerName][blob_idx]._value > max_value ) {
@@ -1136,36 +1446,61 @@ MASCP.CondensedSequenceRenderer.prototype.redrawAnnotations = function(layerName
 // Simple JavaScript Templating
 // John Resig - http://ejohn.org/ - MIT Licensed
 (function(mpr){
-  var cache = {};
-  
-  mpr.fillTemplate = function tmpl(str, data){
-    // Figure out if we're getting a template, or if we need to
-    // load the template - and be sure to cache the result.
-    var fn = !/\W/.test(str) ?
-      cache[str] = cache[str] ||
-        tmpl(document.getElementById(str).innerHTML) :
-      
-      // Generate a reusable function that will serve as a template
-      // generator (and which will be cached).
-      new Function("obj",
-        "var p=[],print=function(){p.push.apply(p,arguments);};" +
+    var cache = {};
+    var needs_sandbox = false;
+
+    var template_func = function tmpl(str, data){
+        // Figure out if we're getting a template, or if we need to
+        // load the template - and be sure to cache the result.
+        var fn = !/\W/.test(str) ?
+          cache[str] = cache[str] ||
+            tmpl(document.getElementById(str).innerHTML) :
+
+          // Generate a reusable function that will serve as a template
+          // generator (and which will be cached).
+          new Function("obj",
+            "var p=[],print=function(){p.push.apply(p,arguments);};" +
+
+            // Introduce the data as local variables using with(){}
+            "with(obj){p.push('" +
+
+            // Convert the template into pure JavaScript
+            str
+              .replace(/[\r\t\n]/g, " ")
+              .split(/\x3c\%/g).join("\t")
+              .replace(/((^|%>)[^\t]*)'/g, "$1\r")
+              .replace(/\t=(.*?)%>/g, "',$1,'")
+              .split("\t").join("');")
+              .split("%>").join("p.push('")
+              .split("\r").join("\\'")
+          + "');}return p.join('');");
         
-        // Introduce the data as local variables using with(){}
-        "with(obj){p.push('" +
-        
-        // Convert the template into pure JavaScript
-        str
-          .replace(/[\r\t\n]/g, " ")
-          .split(/\x3c\%/g).join("\t")
-          .replace(/((^|%>)[^\t]*)'/g, "$1\r")
-          .replace(/\t=(.*?)%>/g, "',$1,'")
-          .split("\t").join("');")
-          .split("%>").join("p.push('")
-          .split("\r").join("\\'")
-      + "');}return p.join('');");
-    
-    // Provide some basic currying to the user
-    return data ? fn( data ) : fn;
+        // Provide some basic currying to the user
+        return data ? fn( data ) : fn;
+    };
+
+    try {
+        var foo = new Function("return;");
+    } catch (exception) {
+        needs_sandbox = true;
+    }
+    if (needs_sandbox) {
+        mpr.fillTemplate = function tmpl(str,data,callback) {
+            MASCP.SANDBOX.contentWindow.postMessage({ "template" : document.getElementById(str).innerHTML, "data" : data },"*");
+            var return_func = function(event) {
+                bean.remove(window,'message',return_func);
+                if (event.data.html) {
+                    callback.call(null,null,event.data.html);
+                }
+            };
+            bean.add(window,'message',return_func);
+
+        }
+        return;
+    }
+
+  mpr.fillTemplate = function(str,data,callback) {
+    callback.call(null,template_func(str,data));
   };
 })(MASCP.CondensedSequenceRenderer.prototype);
 
@@ -1345,8 +1680,12 @@ clazz.prototype.addTrack = function(layer) {
         for (var i = 0 ; i < event_names.length; i++) {
             jQuery(layer_containers[layer.name]._event_proxy).bind(event_names[i],ev_function);
         }
-        jQuery(layer).unbind('removed').bind('removed',function() {
-            renderer.removeTrack(this);
+        jQuery(layer).unbind('removed').bind('removed',function(e,rend) {
+            if (rend) {
+                rend.removeTrack(this);
+            } else{
+                renderer.removeTrack(this);
+            }
         });
     }
     
@@ -1361,7 +1700,9 @@ clazz.prototype.removeTrack = function(layer) {
     var layer_containers = this._layer_containers || [];
     if ( layer_containers[layer.name] ) {                
         layer_containers[layer.name].forEach(function(el) {
-            el.parentNode.removeChild(el);
+            if (el.parentNode) {
+                el.parentNode.removeChild(el);
+            }
         });
         this.removeAnnotations(layer);
         this._layer_containers[layer.name] = null;
@@ -1369,55 +1710,66 @@ clazz.prototype.removeTrack = function(layer) {
     }
     
 };
-
+var refresh_id = 0;
 clazz.prototype.enablePrintResizing = function() {
-    var self = this;
-    if (self._media_func) {
+    if ( ! (this.win() || window).matchMedia ) {
         return;
+    }
+    if (this._media_func) {
+        return this._media_func;
     }
     var old_zoom;
     var old_translate;
     var old_viewbox;
-    self._media_func = function(match) {
+    this._media_func = function(matcher) {
+        var self = this;
         if ( self.grow_container ) {
             return;
         }
-
+        var match=matcher;
         if (! match.matches ) {
-            if (old_zoom) {
+            if (self.old_zoom) {
+                var a_zoom = self.old_zoom;
+                self.old_zoom = null;
                 self.zoomCenter = null;
                 self.withoutRefresh(function() {
-                  self.zoom = old_zoom;
+                  self.zoom = a_zoom;
                 });
                 self._canvas.setCurrentTranslateXY(old_translate,0);
                 self._container_canvas.setAttribute('viewBox',old_viewbox);
-                self._container.style.height = 'auto';
-                old_zoom = null;
-                old_translate = null;
+                // self._container.style.height = 'auto';
+                self.old_zoom = null;
+                self.old_translate = null;
                 self.refresh();
-                bean.fire(widget_rend._canvas,'zoomChange');
+                bean.fire(self._canvas,'zoomChange');
             }
             return;
         }
-        var container = self._container;
-        old_translate = self._canvas.currentTranslate.x;
-        self._canvas.setCurrentTranslateXY(0,0);
-        var zoomFactor = 0.95 * (container.clientWidth) / (widget_rend.sequence.length);
-        if ( ! old_zoom ) {
-          old_zoom = self.zoom;
-          old_viewbox = self._container_canvas.getAttribute('viewBox');
+        try {
+            var container = self._container;
+            self.old_translate = self._canvas.currentTranslate.x;
+            self._canvas.setCurrentTranslateXY(0,0);
+            var zoomFactor = 0.95 * (container.clientWidth) / (self.sequence.length);
+            if ( ! self.old_zoom ) {
+              self.old_zoom = self.zoom;
+              self.old_viewbox = self._container_canvas.getAttribute('viewBox');
+            }
+            self.zoomCenter = null;
+            self._container_canvas.removeAttribute('viewBox');
+            self.withoutRefresh(function() {
+                self.zoom = zoomFactor;
+            });
+            self.refresh();
+        } catch (err) {
+            console.log(err);
+            console.log(err.stack);
         }
-        self.zoomCenter = null;
-        self._container_canvas.removeAttribute('viewBox');
-
-        self.withoutRefresh(function() {
-            self.zoom = zoomFactor;
-        });
-        self.grow_container = true;
-        self.refresh();
-        self.grow_container = false;
+        // self.grow_container = false;
     };
-    window.matchMedia('print').addListener(self._media_func);
+    var rend = this;
+    (this.win() || window).matchMedia('print').addListener(function(matcher) {
+        rend._media_func(matcher);
+    });
 };
 
 clazz.prototype.wireframe = function() {
@@ -1518,21 +1870,11 @@ clazz.prototype.refresh = function(animated) {
             }
             continue;
         } else {
-            container.attr({ 'opacity' : '1' });
+            // container.attr({ 'opacity' : '1' });
         }
-        if (container.tracers) {
-            var disp_style = (this.isLayerActive(name) && (this.zoom > 3.6)) ? 'visible' : 'hidden';
-            var height = (1.5 + track_heights / this.zoom )*RS;
-            
-            if (container.fixed_track_height) {
-                height += 0.5*container.fixed_track_height * RS;
-            }
-            if(animated) {
-                container.tracers.animate({'visibility' : disp_style , 'y' : (this._axis_height - 1.5)*RS,'height' : height });
-            } else {
-                container.tracers.attr({'visibility' : disp_style , 'y' : (this._axis_height - 1.5)*RS,'height' : height });                
-            }
-        }
+
+        var tracer_top = track_heights;
+
         if (container.fixed_track_height) {
 
             var track_height = container.fixed_track_height;
@@ -1564,8 +1906,19 @@ clazz.prototype.refresh = function(animated) {
             }
             track_heights += container.track_height + this.trackGap;
         }
-
         container.refresh_zoom();
+
+        if (container.tracers) {
+            var disp_style = (this.isLayerActive(name) && (this.zoom > 3.6)) ? 'visible' : 'hidden';
+            var height = (1.5 + tracer_top / this.zoom )*RS;
+
+            if(animated) {
+                container.tracers.animate({'visibility' : disp_style , 'y' : (this._axis_height - 1.5)*RS,'height' : height });
+            } else {
+                container.tracers.attr({'visibility' : disp_style , 'y' : (this._axis_height - 1.5)*RS,'height' : height });
+            }
+        }
+
 
     }
     this.wireframe();
@@ -1573,7 +1926,7 @@ clazz.prototype.refresh = function(animated) {
     var viewBox = [-1,0,0,0];
     viewBox[0] = -2*RS;
     viewBox[2] = (this.sequence.split('').length+(this.padding)+2)*RS;
-    viewBox[3] = (this._axis_height + (track_heights / this.zoom)+ (this.padding))*RS;
+    viewBox[3] = (this._axis_height + (track_heights / this.zoom)+ (this.padding / this.zoom))*RS;
     this._canvas.setAttribute('viewBox', viewBox.join(' '));
     this._canvas._canvas_height = viewBox[3];
 
@@ -1582,7 +1935,7 @@ clazz.prototype.refresh = function(animated) {
 
     outer_viewbox[0] = 0;
     outer_viewbox[2] = (this.zoom)*(2*this.sequence.length)+(this.padding);
-    outer_viewbox[3] = (this.zoom)*2*(this._axis_height + (track_heights / this.zoom)+ (this.padding));
+    outer_viewbox[3] = (this.zoom)*2*(this._axis_height + (track_heights / this.zoom)+ (this.padding / this.zoom));
     if (! this.grow_container ) {
         this._container_canvas.setAttribute('viewBox', outer_viewbox.join(' '));
     }
@@ -1631,7 +1984,7 @@ MASCP.CondensedSequenceRenderer.Zoom = function(renderer) {
     var start_x = null;
     var accessors = { 
         setZoom: function(zoomLevel) {
-            var min_zoom_level = renderer.sequence ? (0.3 / 2) * window.innerWidth / renderer.sequence.length : 0.5;
+            var min_zoom_level = renderer.sequence ? (0.3 / 2) * renderer._container.clientWidth / renderer.sequence.length : 0.5;
             if (zoomLevel < min_zoom_level) {
                 zoomLevel = min_zoom_level;
             }
@@ -1751,11 +2104,6 @@ MASCP.CondensedSequenceRenderer.Zoom = function(renderer) {
         }
     };
 
-    if (renderer.__defineSetter__) {    
-        renderer.__defineSetter__("zoom", accessors.setZoom);
-        renderer.__defineGetter__("zoom", accessors.getZoom);
-    }
-
     if (Object.defineProperty && ! MASCP.IE8) {
         Object.defineProperty(renderer,"zoom", {
             get : accessors.getZoom,
@@ -1795,15 +2143,6 @@ MASCP.CondensedSequenceRenderer.Zoom = function(renderer) {
             this.refresh();
         }
     };
-
-    if (clazz.prototype.__defineSetter__) {    
-        clazz.prototype.__defineSetter__("padding", accessors.setPadding);
-        clazz.prototype.__defineGetter__("padding", accessors.getPadding);
-        clazz.prototype.__defineSetter__("trackGap", accessors.setTrackGap);
-        clazz.prototype.__defineGetter__("trackGap", accessors.getTrackGap);
-    }
-
-
 
     if (Object.defineProperty && ! MASCP.IE8 ) {
         Object.defineProperty(clazz.prototype,"padding", {

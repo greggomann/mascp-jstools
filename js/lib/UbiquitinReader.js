@@ -101,8 +101,8 @@ MASCP.UbiquitinReader.prototype.setupSequenceRenderer = function(sequenceRendere
             icons.push(peptide_bits.addToLayer(layer_name));
 
             for (var k = 0; k < peps[i].positions.length; k++ ) {
-                icons = icons.concat(peptide_bits[peps[i].positions[k] - 1].addToLayer(overlay_name));
-                peptide_bits[peps[i].positions[k] - 1].addToLayer(layer_name);
+                icons = icons.concat(peptide_bits[peps[i].positions[k] - 1].addToLayer(overlay_name, { 'height' : 20 }));
+                peptide_bits[peps[i].positions[k] - 1].addToLayer(layer_name, { 'height' : 20 });
             }
         }
         jQuery(sequenceRenderer).trigger('resultsRendered',[reader]);

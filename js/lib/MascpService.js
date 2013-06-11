@@ -84,10 +84,11 @@ if (typeof module != 'undefined' && module.exports){
     var parser = require('jsdom').jsdom;
     
     var XMLHttpRequest = require("xmlhttprequest").XMLHttpRequest;
-    XMLHttpRequest.prototype.__defineGetter__("responseXML", function() {
-        return parser((this.responseText || '').replace(/&/g,'&amp;'));
+    Object.defineProperty(XMLHttpRequest.prototype,"responseXML", {
+        get: function() { return parser((this.responseText || '').replace(/&/g,'&amp;')); },
+        set: function() {}
+
     });
-    XMLHttpRequest.prototype.__defineSetter__("responseXML",function() {});
     XMLHttpRequest.prototype.customUA = 'MASCP Gator crawler (+http://gator.masc-proteomics.org/)';
 } else {
     window.MASCP = MASCP;
@@ -647,7 +648,7 @@ base.retrieve = function(agi,callback)
 
     clazz.SweepCache = function(date) {
         if (! date) {
-            date = date.getTime();
+            date = (new Date());
         }
         sweep_cache(date.getTime());
     };
@@ -657,7 +658,7 @@ base.retrieve = function(agi,callback)
             return;
         }
         var _oldRetrieve = reader.retrieve;
-        
+        var has_avoid;
         reader.retrieve = function(agi,cback) {
             var self = this;
             var id = agi ? agi : self.agi;
@@ -668,6 +669,30 @@ base.retrieve = function(agi,callback)
 
             id = id.toLowerCase();
             self.agi = id;
+
+            if (self.avoid_database) {
+                if (has_avoid) {
+                    return;
+                }
+                has_avoid = self._dataReceived;
+                self._dataReceived = (function() { return function(dat) {
+                        var res = has_avoid.call(this,dat);
+                        var id = self.agi;
+                        if (res && this.result && this.result._raw_data !== null) {
+                            store_db_data(id,this.toString(),this.result._raw_data || {});
+                        }
+                        dat = {};
+                        return res;
+                    };})();
+                cback.call(self);
+                return;
+            }
+            if (has_avoid && ! self.avoid_database) {
+                self._dataReceived = has_avoid;
+                has_avoid = null;
+                cback.call(self);
+                return;
+            }
 
             get_db_data(id,self.toString(),function(err,data) {
                 if (data) {
@@ -734,9 +759,18 @@ base.retrieve = function(agi,callback)
         return true;
     };
 
-    clazz.ClearCache = function(service,agi) {
+    clazz.FirstAgi = function(service,cback) {
         var serviceString = service.toString();
-        clear_service(serviceString,agi);
+        first_accession(serviceString,cback);
+        return true;
+    };
+
+    clazz.ClearCache = function(service,agi,callback) {
+        var serviceString = service.toString();
+        if ( ! callback ) {
+            callback = function() {};
+        }
+        clear_service(serviceString,agi,callback);
         return true;
     };
 
@@ -745,62 +779,370 @@ base.retrieve = function(agi,callback)
         data_timestamps(serviceString,null,cback);
     };
 
-    clazz.BulkOperation = function() {
-        begin_transaction();
-        return function() {
-            end_transaction();
+    var transaction_ref_count = 0;
+    var waiting_callbacks = [];
+    clazz.BulkOperation = function(callback) {
+        transaction_ref_count++;
+        var trans = function(callback) {
+            if ( ! callback ) {
+                callback = function() {};
+            }
+            transaction_ref_count--;
+            waiting_callbacks.push(callback);
+            if (transaction_ref_count == 0) {
+                end_transaction(function(err) {
+                    waiting_callbacks.forEach(function(cback) {
+                        cback(err);
+                    });
+                    waiting_callbacks = [];
+                });
+            }
         };
+        begin_transaction(callback,trans);
+        return trans;
     };
 
-    var db;
+    var db,idb;
 
     if (typeof module != 'undefined' && module.exports) {
         var sqlite = require('sqlite3');
         db = new sqlite.Database("cached.db");
         //db.open("cached.db",function() {});
     } else if ("openDatabase" in window) {
-        try {
-            db = openDatabase("cached","","MASCP Gator cache",1024*1024);
-        } catch (err) {
-            throw err;
+
+        window.indexedDB = window.indexedDB || window.webkitIndexedDB || window.mozIndexedDB || window.msIndexedDB;
+        if ( ! window.indexedDB ) {
+            delete window.indexedDB;
         }
-        db.all = function(sql,args,callback) {
-            this.exec(sql,args,callback);
-        };
-        db.exec = function(sql,args,callback) {
-            var self = this;
-            var sqlargs = args;
-            var cback = callback;
-            if (typeof cback == 'undefined' && sqlargs && Object.prototype.toString.call(sqlargs) != '[object Array]') {
-                cback = args;
-                sqlargs = null;
+        if ("indexedDB" in window) {
+            // Handle the prefix of Chrome to IDBTransaction/IDBKeyRange.
+            if ('webkitIndexedDB' in window) {
+                window.IDBTransaction = window.webkitIDBTransaction;
+                window.IDBKeyRange = window.webkitIDBKeyRange;
+                window.IDBCursor = window.webkitIDBCursor;
             }
-            self.transaction(function(tx) {
-                tx.executeSql(sql,sqlargs,function(tx,result) {
-                    var res = [];
-                    for (var i = 0; i < result.rows.length; i++) {
-                        res.push(result.rows.item(i));
+
+            /* Versioning of DB schema */
+            idb = true;
+            var req = indexedDB.open("datacache");
+            req.onsuccess = function(e) {
+                idb = e.target.result;
+                var version = "1.3";
+                if (idb.version != version) {
+                    var set_version = idb.setVersion(version);
+                    set_version.onsuccess = function(e) {
+                        if (idb.objectStoreNames.contains("cached")) {
+                            idb.deleteObjectStore("cached");
+                        }
+                        var store = idb.createObjectStore("cached", { keyPath: "id"});
+                        store.createIndex("entries", [ "acc" , "service" ], { unique : false });
+                        store.createIndex("timestamps", [ "service" , "retrieved" ], { unique : false });
+                        store.createIndex("services", "service", { unique : false });
+                        var trans = set_version.result;
+                        trans.oncomplete = function() {
+                            if (MASCP.events) {
+                                MASCP.events.emit("ready");
+                            }
+                            if (MASCP.ready && (MASCP.ready != true)) {
+                                MASCP.ready();
+                            } else {
+                                MASCP.ready = true;
+                            }
+                        };
+                    };
+                } else {
+                    if (MASCP.events) {
+                        MASCP.events.emit("ready");
                     }
-                    if (cback) {
-                        cback.call(db,null,res);
+                    if (MASCP.ready && (MASCP.ready != true)) {
+                        MASCP.ready();
+                    } else {
+                        MASCP.ready = true;
                     }
-                },function(tx,err) {
-                    if (cback) {
-                        cback.call(db,err);
-                    }
+                }
+            };
+        } else {
+            try {
+                db = openDatabase("cached","","MASCP Gator cache",1024*1024);
+            } catch (err) {
+                throw err;
+            }
+            db.all = function(sql,args,callback) {
+                this.exec(sql,args,callback);
+            };
+            db.exec = function(sql,args,callback) {
+                var self = this;
+                var sqlargs = args;
+                var cback = callback;
+                if (typeof cback == 'undefined' && sqlargs && Object.prototype.toString.call(sqlargs) != '[object Array]') {
+                    cback = args;
+                    sqlargs = null;
+                }
+                self.transaction(function(tx) {
+                    tx.executeSql(sql,sqlargs,function(tx,result) {
+                        var res = [];
+                        for (var i = 0; i < result.rows.length; i++) {
+                            res.push(result.rows.item(i));
+                        }
+                        if (cback) {
+                            cback.call(db,null,res);
+                        }
+                    },function(tx,err) {
+                        if (cback) {
+                            cback.call(db,err);
+                        }
+                    });
                 });
-            });
-        };
-        
+            };
+        }
     }
-        
-    if (typeof db != 'undefined') {
+
+    if ((typeof idb != 'undefined') && (idb != true)) {
+        var transaction_store_db;
+        var transaction_find_latest;
+        var transaction_data = [];
+        begin_transaction = function(callback,trans) {
+            if (transaction_store_db != null) {
+                setTimeout(function() {
+                    callback.call({ "transaction" : trans });
+                },0);
+                return false;
+            }
+            transaction_store_db = store_db_data;
+            store_db_data = function(acc,service,data) {
+                transaction_data.push([acc,service,data]);
+            };
+            setTimeout(function() {
+                callback.call({ "transaction" : trans });
+            },0);
+            return true;
+        };
+
+        end_transaction = function(callback) {
+            if (transaction_store_db === null) {
+                callback(null);
+                return;
+            }
+            store_db_data = transaction_store_db;
+            transaction_store_db = null;
+            var trans = idb.transaction(["cached"], "readwrite");
+            var store = trans.objectStore("cached");
+            trans.oncomplete = function(event) {
+                callback(null);
+            };
+            trans.onerror = function(event) {
+                callback(event.target.errorCode);
+            };
+            while (transaction_data.length > 0) {
+                var row = transaction_data.shift();
+                var acc = row[0];
+                var service = row[1];
+                var data = row[2];
+                if (typeof data != 'object' || (((typeof Document) != 'undefined') && data instanceof Document)) {
+                    continue;
+                }
+                var dateobj = data.retrieved ? data.retrieved : (new Date());
+                if (typeof dateobj == 'string') {
+                    dateobj = new Date(dateobj);
+                }
+                dateobj.setUTCHours(0);
+                dateobj.setUTCMinutes(0);
+                dateobj.setUTCSeconds(0);
+                dateobj.setUTCMilliseconds(0);
+                var reporter = insert_report_func(acc,service);
+                var datetime = dateobj.getTime();
+                data.id = [acc,service,datetime];
+                data.acc = acc;
+                data.service = service;
+                data.retrieved = datetime;
+                var req = store.put(data);
+                req.onerror = reporter;
+            }
+        };
+
+        var insert_report_func = function(acc,service) {
+            return function(err,rows) {
+                if ( ! err && rows) {
+                }
+            };
+        };
+
+        store_db_data = function(acc,service,data) {
+            var trans = idb.transaction(["cached"], "readwrite");
+            var store = trans.objectStore("cached");
+            if (typeof data != 'object' || (((typeof Document) != 'undefined') && data instanceof Document)) {
+                return;
+            }
+            var dateobj = data.retrieved ? data.retrieved : (new Date());
+            if (typeof dateobj == 'string') {
+                dateobj = new Date(dateobj);
+            }
+            dateobj.setUTCHours(0);
+            dateobj.setUTCMinutes(0);
+            dateobj.setUTCSeconds(0);
+            dateobj.setUTCMilliseconds(0);
+            var reporter = insert_report_func(acc,service);
+            var datetime = dateobj.getTime();
+            data.id = [acc,service,datetime];
+            data.acc = acc;
+            data.service = service;
+            data.retrieved = datetime;
+            var req = store.put(data);
+            // req.onsuccess = reporter;
+            req.onerror = reporter;
+        };
+
+        get_db_data = function(acc,service,cback) {
+            var timestamps = max_age ? [min_age,max_age] : [min_age, (new Date()).getTime()];
+            return find_latest_data(acc,service,timestamps,cback);
+        };
+
+        find_latest_data = function(acc,service,timestamps,cback) {
+            if ( ! acc ) {
+                cback.call();
+                return;
+            }
+            var trans = idb.transaction(["cached"],"readonly");
+            var store = trans.objectStore("cached");
+            var idx = store.index("entries");
+            var max_stamp = -1;
+            var result = null;
+            var range = IDBKeyRange.only([acc,service]);
+            idx.openCursor(range).onsuccess = function(event) {
+                var cursor = event.target.result;
+                if (cursor) {
+                    if (cursor.primaryKey[2] >= timestamps[0] && cursor.primaryKey[2] <= timestamps[1] ) {
+                        if (cursor.primaryKey[2] > max_stamp && cursor.primaryKey[0] == acc && cursor.primaryKey[1] == service) {
+                            result = cursor.value;
+                            max_stamp = cursor.primaryKey.retrieved;
+                            result.retrieved = new Date(cursor.primaryKey.retrieved);
+                        }
+                    }
+                    cursor.continue();
+                } else {
+                    if (result) {
+                        // result = result.data
+                    }
+                    cback.call(null,null,result);
+                }
+            };
+        };
+
+        sweep_cache = function(timestamp) {
+            var trans = idb.transaction(["cached"],"readwrite");
+            var store = trans.objectStore("cached");
+            var idx = store.index("timestamps");
+            var results = [];
+            idx.openKeyCursor(null, "nextunique").onsuccess = function(event) {
+                var cursor = event.target.result;
+                if (cursor) {
+                    if ( timestamp >= cursor.key[1] ) {
+                        store.delete(cursor.primaryKey);
+                    }
+                    cursor.continue();
+                }
+            };
+        };
+
+        data_timestamps = function(service,timestamps,cback) {
+
+            if (! timestamps || typeof timestamps != 'object' || ! timestamps.length ) {
+                timestamps = [0,(new Date()).getTime()];
+            }
+
+            var trans = idb.transaction(["cached"],"readonly");
+            var store = trans.objectStore("cached");
+            var idx = store.index("timestamps");
+            var results = [];
+            idx.openKeyCursor(null, "nextunique").onsuccess = function(event) {
+                var cursor = event.target.result;
+                if (cursor) {
+                    if (cursor.key[0] == service && timestamps[0] <= cursor.key[1] && timestamps[1] >= cursor.key[1] ) {
+                        results.push(new Date(cursor.key[1]));
+                    }
+                    cursor.continue();
+                } else {
+                    cback.call(null,results);
+                }
+            };
+        };
+
+        clear_service = function(service,acc,callback) {
+            var trans = idb.transaction(["cached"],"readwrite");
+            var store = trans.objectStore("cached");
+            var idx = store.index("services");
+            var range = IDBKeyRange.only(service);
+            idx.openCursor(range).onsuccess = function(event) {
+                var cursor = event.target.result;
+                if (cursor) {
+                    if ((! acc || (cursor.value.acc == acc) )) {
+                        store.delete(cursor.value.id);
+                    }
+                    cursor.continue();
+                } else {
+                    callback.call(MASCP.Service);
+                }
+            };
+        };
+
+        search_service = function(service,cback) {
+            var trans = idb.transaction(["cached"],"readonly");
+            var store = trans.objectStore("cached");
+            var idx = store.index("services");
+            var results = [];
+            var range = IDBKeyRange.only(service);
+            idx.openKeyCursor(range, "nextunique").onsuccess = function(event) {
+                var cursor = event.target.result;
+                if (cursor) {
+                    results.push(cursor.key);
+                    cursor.continue();
+                } else {
+                    cback.call(MASCP.Service,results);
+                }
+            };
+        };
+        first_accession = function(service,cback) {
+            var trans = idb.transaction(["cached"],"readonly");
+            var store = trans.objectStore("cached");
+            var idx = store.index("services");
+            var range = IDBKeyRange.only(service);
+            idx.openCursor(range,"nextunique").onsuccess = function(event) {
+                var cursor = event.target.result;
+                if (cursor) {
+                    cback.call(MASCP.Service,cursor.value.acc);
+                } else {
+                    cback.call(MASCP.Service,null);
+                }
+            };
+        };
+        cached_accessions = function(service,cback) {
+            var trans = idb.transaction(["cached"],"readonly");
+            var store = trans.objectStore("cached");
+            var idx = store.index("services");
+            var results = [];
+            var range = IDBKeyRange.only(service);
+            idx.openCursor(range).onsuccess = function(event) {
+                var cursor = event.target.result;
+                if (cursor) {
+                    results.push(cursor.value.acc);
+                    cursor.continue();
+                } else {
+                    cback.call(MASCP.Service,results);
+                }
+            };
+        };
+    } else if (typeof db != 'undefined') {
 
         db.all('SELECT version from versions where tablename = "datacache"',function(err,rows) { 
             var version = rows ? rows[0].version : null;
             if (version == 1.3) {
                 if (MASCP.events) {
                     MASCP.events.emit('ready');            
+                }
+                if (MASCP.ready) {
+                    MASCP.ready();
+                } else {
+                    MASCP.ready = true;
                 }
                 return;                
             }
@@ -839,40 +1181,65 @@ base.retrieve = function(agi,callback)
                     if ( ! err ) {
                         if (MASCP.events) {
                             MASCP.events.emit('ready');            
-                        }                        
+                        }
+                        if (MASCP.ready) {
+                            MASCP.ready();
+                        } else {
+                            MASCP.ready  = true;
+                        }
                     }
                 });
                 version = 1.3;                
             }
         });
 
-        var old_get_db_data = get_db_data;
+        var old_get_db_data = null;
         
-        begin_transaction = function() {
-            get_db_data = function(id,clazz,cback) {
-                 setTimeout(function() {
-                     cback.call(null,null);
-                 },0);
-            };
-            db.exec("BEGIN TRANSACTION;",function() {});
+        begin_transaction = function(callback,trans) {
+            if (old_get_db_data !== null) {
+                callback.call({ "transaction" : trans });
+                return false;
+            }
+            db.exec("BEGIN TRANSACTION;",function(err) {
+                if ( err ) {
+                    callback.call(null,err);
+                    return;
+                }
+                old_get_db_data = get_db_data;
+
+                get_db_data = function(id,clazz,cback) {
+                     setTimeout(function() {
+                         cback.call(null,null);
+                     },0);
+                };
+                callback.call({ "transaction" : trans });
+            });
+            return true;
         };
         
-        end_transaction = function() {
-            get_db_data = old_get_db_data;
-            db.exec("END TRANSACTION;",function() {});
+        end_transaction = function(callback) {
+            if (old_get_db_data === null) {
+                callback();
+                return;
+            }
+            db.exec("END TRANSACTION;",function(err) {
+                get_db_data = old_get_db_data;
+                old_get_db_data = null;
+                callback(err);
+            });
         };
         
         sweep_cache = function(timestamp) {
             db.all("DELETE from datacache where retrieved <= ? ",[timestamp],function() {});
         };
         
-        clear_service = function(service,acc) {
+        clear_service = function(service,acc,callback) {
             var servicename = service;
             servicename += "%";
             if ( ! acc ) {
-                db.all("DELETE from datacache where service like ? ",[servicename],function() {});
+                db.all("DELETE from datacache where service like ? ",[servicename],function() { callback.call(MASCP.Service); });
             } else {
-                db.all("DELETE from datacache where service like ? and acc = ?",[servicename,acc.toLowerCase()],function() {});
+                db.all("DELETE from datacache where service like ? and acc = ?",[servicename,acc.toLowerCase()],function() { callback.call(MASCP.Service); });
             }
             
         };
@@ -895,6 +1262,17 @@ base.retrieve = function(agi,callback)
                 return uniques;
             });
         };
+
+        first_accession = function(service,cback) {
+            db.all("SELECT distinct acc from datacache where service = ? limit 1",[service],function(err,records) {
+                if (records.length < 1) {
+                    cback.call(MASCP.Service,null);
+                } else {
+                    cback.call(MASCP.Service,records[0].acc);
+                }
+            });
+        };
+
         
         cached_accessions = function(service,cback) {
             db.all("SELECT distinct acc from datacache where service = ?",[service],function(err,records) {
@@ -941,6 +1319,7 @@ base.retrieve = function(agi,callback)
             data = {};
             db.all("INSERT INTO datacache(acc,service,retrieved,data) VALUES(?,?,?,?)",[acc,service,datetime,str_rep],insert_report_func(acc,service));
         };
+
         find_latest_data = function(acc,service,timestamps,cback) {
             var sql = "SELECT * from datacache where acc=? and service=? and retrieved >= ? and retrieved <= ? ORDER BY retrieved DESC LIMIT 1";
             var args = [acc,service,timestamps[0],timestamps[1]];            
@@ -975,7 +1354,7 @@ base.retrieve = function(agi,callback)
         };
         
     } else if ("localStorage" in window) {
-        
+
         sweep_cache = function(timestamp) {
             if ("localStorage" in window) {
                 var keys = [];
@@ -997,7 +1376,7 @@ base.retrieve = function(agi,callback)
             }
         };
         
-        clear_service = function(service,acc) {
+        clear_service = function(service,acc,callback) {
             if ("localStorage" in window) {
                 var keys = [];
                 for (var i = 0, len = localStorage.length; i < len; i++) {
@@ -1013,6 +1392,7 @@ base.retrieve = function(agi,callback)
                     }
                     key = keys.shift();
                 }
+                callback.call(MASCP.Service);
             }            
         };
         
@@ -1039,6 +1419,22 @@ base.retrieve = function(agi,callback)
             cback.call(clazz,uniques);
 
             return uniques;
+        };
+
+        first_accession = function(service,cback) {
+            if ("localStorage" in window) {
+                var key;
+                var re = new RegExp("^"+service);
+                for (var i = 0, len = localStorage.length; i < len; i++){
+                    key = localStorage.key(i);
+                    if (re.test(key)) {
+                        key = key.replace(service,'');
+                        cback.call(clazz,uniques);
+                        return;
+                    }
+                }
+            }
+            cback.call(clazz,null);
         };
 
         cached_accessions = function(service,cback) {
@@ -1093,13 +1489,33 @@ base.retrieve = function(agi,callback)
             cback.call(null,[]);
         };
         
-        begin_transaction = function() {
+        begin_transaction = function(callback) {
             // No support for transactions here. Do nothing.
+            setTimeout(function() {
+                callback.call();
+            },0);
         };
-        end_transaction = function() {
+        end_transaction = function(callback) {
             // No support for transactions here. Do nothing.
+            setTimeout(function(){
+                callback();
+            },0);
         };
+
+        if (MASCP.events) {
+            MASCP.events.emit('ready');
+        }
+        setTimeout(function() {
+            if (MASCP.ready && (MASCP.ready != true)) {
+                MASCP.ready();
+            } else {
+                MASCP.ready = true;
+            }
+        },100);
+
+
     } else {
+
         sweep_cache = function(timestamp) {
         };
         
@@ -1129,11 +1545,17 @@ base.retrieve = function(agi,callback)
             cback.call(null,[]);
         };
         
-        begin_transaction = function() {
+        begin_transaction = function(callback) {
             // No support for transactions here. Do nothing.
+            setTimeout(function(){
+                callback();
+            },0);
         };
-        end_transaction = function() {
+        end_transaction = function(callback) {
             // No support for transactions here. Do nothing.
+            setTimeout(function(){
+                callback();
+            },0);
         };
     }
     
@@ -1186,6 +1608,7 @@ MASCP.Service.prototype.registerSequenceRenderer = function(sequenceRenderer)
         this.setupSequenceRenderer(sequenceRenderer);        
         this.renderers.push(sequenceRenderer);
     }
+    sequenceRenderer.trigger('readerRegistered',[this]);
     return this;
 };
 
