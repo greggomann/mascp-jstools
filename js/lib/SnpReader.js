@@ -209,6 +209,18 @@ MASCP.SnpReader.Result.prototype.getSnp = function(accession) {
     return results;
 };
 
+MASCP.SnpReader.Result.prototype.getAllExperimentalPositions = function() {
+    var accessions = this.getAccessions();
+    var results = [];
+    for (var acc in accessions) {
+        var snps = this.getSnp(acc);
+        for (var snp in snps) {
+            results.push(snp-1);
+        }
+    }
+    return results;
+};
+
 MASCP.SnpReader.Result.prototype.getSnpsForPosition = function(position) {
     var self = this;
     this._cached = this._cached || {};
@@ -256,7 +268,6 @@ MASCP.RnaEditReader.prototype.setupSequenceRenderer = function(renderer) {
         while (accessions.length > 0) {
 
             var acc = accessions.shift();
-            var acc_fullname = acc;
 
             var diffs = a_result.getSnp(acc);
 
