@@ -817,7 +817,7 @@ var addElementToLayer = function(layerName) {
         };
     }
     if ( layerName.charAt(0) == 'g' ) {
-	var tracer_marker = canvas.marker(this._index+0.3,10,0.5,'GLO');
+	var tracer_marker = canvas.marker(this._index+0.3,10,0.5,'GLY');
     }else{ 
 	var tracer_marker = canvas.marker(this._index+0.3,10,0.5,layerName.charAt(0).toUpperCase());
     } 
