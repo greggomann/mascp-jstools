@@ -547,7 +547,7 @@ var SVGCanvas = SVGCanvas || (function() {
 
         canvas.a = function(href) {
             var a_anchor = document.createElementNS(svgns,'a');
-            a_anchor.setAttribute('target','_new');        
+            a_anchor.setAttribute('target','_blank');        
             a_anchor.setAttributeNS('http://www.w3.org/1999/xlink','href',href);
             this.appendChild(a_anchor);
             return a_anchor;
