@@ -91,7 +91,8 @@ MASCP.SnpReader.prototype.setupSequenceRenderer = function(renderer) {
                 continue;
             }
             if ( ! insertions_layer ) {
-                insertions_layer = renderer.registerLayer('insertions_controller',{'fullname' : 'nsSNPs','color' : '#ff0000'});                
+                insertions_layer = renderer.registerLayer('insertions_controller',{'fullname' : 'nsSNPs','color' : '#ff0000'});
+                MASCP.getLayer('insertions_controller').href = 'http://1001proteomes.masc-proteomics.org/#'+reader.agi.toUpperCase();
             }
 
 
