@@ -13,21 +13,21 @@ if ( typeof MASCP == 'undefined' || typeof MASCP.Service == 'undefined' ) {
  *  @extends    MASCP.Service
  */
 MASCP.GlycoModReader = MASCP.buildService(function(data) {
-                        this._raw_data = data;                        
+                        this._raw_data = data;
                         return this;
                     });
 
-MASCP.GlycoModReader.SERVICE_URL = 'http://gator.masc-proteomics.org/rippdb.pl?';
+MASCP.GlycoModReader.SERVICE_URL = '/?';
 
 MASCP.GlycoModReader.prototype.requestData = function()
 {
     var agi = this.agi;
-    
+
     return {
         type: "GET",
         dataType: "json",
         data: { 'agi'       : agi,
-                'service'   : 'glycomod' 
+                'service'   : 'glycomod'
         }
     };
 };
@@ -57,7 +57,7 @@ MASCP.GlycoModReader.Result.prototype.getPeptides = function()
 
 
     this._peptides= this._raw_data.peptides;
-    
+
     return this._peptides;
 };
 
@@ -71,13 +71,13 @@ MASCP.GlycoModReader.prototype.setupSequenceRenderer = function(sequenceRenderer
     var reader = this;
 
     var css_block = '.active .overlay { background: #ff00ff; } .active a { color: #000000; text-decoration: none !important; }  :indeterminate { background: #ff0000; } .tracks .active { background: #0000ff; } .inactive a { text-decoration: none; } .inactive { display: none; }';
-    
+
     this.bind('resultReceived', function() {
         var peps = this.result.getPeptides();
 
         var overlay_name = 'glycomod_experimental';
         var icons = [];
-        
+
         if (peps.length > 0) {
             MASCP.registerLayer(overlay_name,{ 'fullname' : 'Glycosylation (mod)', 'color' : '#ff00ff', 'css' : css_block, 'hover_peptides' : true });
 
@@ -89,7 +89,7 @@ MASCP.GlycoModReader.prototype.setupSequenceRenderer = function(sequenceRenderer
 
         for (var j = 0; j < peps.length; j++ ) {
             var pep = peps[j];
-            
+
             if (pep.length === 0) {
                 continue;
             }
@@ -103,15 +103,16 @@ MASCP.GlycoModReader.prototype.setupSequenceRenderer = function(sequenceRenderer
             peptide_bits.addToLayer(layer_name);
             icons.push(peptide_bits.addToLayer('glycomod_experimental'));
 
-	     for (var k = 0; k < pep.de_index.length; k++ ) {
-		icons = icons.concat(peptide_bits[pep.de_index[k] - 1].addToLayer('glycomod_experimental'));
-		peptide_bits[pep.de_index[k] - 1].addToLayer(layer_name);
-	     }
+            for (var k = 0; k < pep.de_index.length; k++ ) {
+    	       	icons = icons.concat(peptide_bits[pep.de_index[k] - 1].addToLayer('glycomod_experimental', { 'content' : 'GLY', 'height' : 20, 'offset' : -2.5 }));
+        		peptide_bits[pep.de_index[k] - 1].addToLayer(layer_name, {'content' : 'GLY', 'height' : 20, 'offset' : -2.5 });
+            }
         }
         jQuery(sequenceRenderer).trigger('resultsRendered',[reader]);
     });
     return this;
 };
+
 /** Retrieve an array of positions that phosphorylation has been experimentally verified to occur upon
  *  @returns {Array}    Phosphorylation positions upon the full protein
  */
@@ -133,6 +134,7 @@ MASCP.GlycoModReader.Result.prototype.getAllExperimentalPositions = function()
     });
     return results;
 }
+
 MASCP.GlycoModReader.Result.prototype.render = function()
 {
 };

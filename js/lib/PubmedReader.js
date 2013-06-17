@@ -33,7 +33,7 @@ MASCP.PubmedReader = MASCP.buildService(function(data) {
                                     }
                                     var exp_id = parseInt(features[i].getElementsByTagName('GROUP')[0].getAttribute('id'),10);
                                     peps_by_seq[seq].publications.push(exp_id);
-                                    all_publications[exp_id] = true;            
+                                    all_publications[exp_id] = true;
                                 }
                             }
                             for (var pep in peps_by_seq) {
@@ -134,27 +134,26 @@ MASCP.PubmedReader.Result.prototype.getPeptides = function()
 MASCP.PubmedReader.prototype.setupSequenceRenderer = function(sequenceRenderer)
 {
     var reader = this;
-    
+
     this.bind('resultReceived', function() {
-        
-        
+
         MASCP.registerGroup('pubmed', {'fullname' : 'Pubmed', 'hide_member_controllers' : true, 'hide_group_controller' : true, 'color' : '#000000' });
 
         var overlay_name = 'pubmed_controller';
 
         var css_block = '.active .overlay { background: #000000; } .active a { color: #000000; text-decoration: none !important; }  :indeterminate { background: #ff0000; } .tracks .active { background: #0000ff; } .inactive a { text-decoration: none; } .inactive { display: none; }';
 
-        MASCP.registerLayer(overlay_name,{ 'fullname' : 'Pubmed', 'color' : '#000000', 'css' : css_block });
+        MASCP.registerLayer(overlay_name,{ 'fullname' : 'Pubmed', 'color' : '#000000', 'css' : css_block, 'hover_peptides' : true });
 
         if (sequenceRenderer.createGroupController) {
             sequenceRenderer.createGroupController('pubmed_controller','pubmed');
         }
-        
+
         var peps = this.result.getPeptides();
         var publications= this.result.getPublications();
         for(var i = 0; i < publications.length; i++) {
             var layer_name = 'pubmed_publication'+publications[i];
-            MASCP.registerLayer(layer_name, { 'fullname': 'Publication'+publications[i], 'group' : 'pubmed', 'color' : '#000000', 'css' : css_block });
+            MASCP.registerLayer(layer_name, { 'fullname': 'Publication'+publications[i], 'group' : 'pubmed', 'color' : '#000000', 'css' : css_block, 'hover_peptides' : true });
             MASCP.getLayer(layer_name).href = 'http://www.ncbi.nlm.nih.gov/pubmed/'+publications[i];
             for (var j = 0 ; j < peps.length; j++) {
                 var peptide = peps[j];
@@ -166,7 +165,7 @@ MASCP.PubmedReader.prototype.setupSequenceRenderer = function(sequenceRenderer)
                 peptide_bits.addToLayer(overlay_name);
             }
         }
-        jQuery(sequenceRenderer).trigger('resultsRendered',[reader]);        
+        jQuery(sequenceRenderer).trigger('resultsRendered',[reader]);
 
 
 

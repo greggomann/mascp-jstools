@@ -113,11 +113,18 @@ var normalise_insertions = function(inserts) {
     var positions = [];
     var result_data = {};
     for (pos in inserts) {
-        if (inserts.hasOwnProperty(pos)) {
-            positions.push(pos);
+        if (inserts.hasOwnProperty(pos) && parseInt(pos) >= -1) {
+            positions.push(parseInt(pos));
         }
     }
-    positions = positions.sort();
+    positions = positions.sort(function sortfunction(a, b){
+        return (a - b);
+    });
+    
+    // From highest to lowest position, loop through and 
+    // subtract the lengths of previous subtratctions from
+    // the final position value.
+
     for (var i = positions.length - 1; i >= 0; i--) {
         var j = i - 1;
         pos = parseInt(positions[i]);
@@ -126,9 +133,11 @@ var normalise_insertions = function(inserts) {
             pos -= inserts[positions[j]].length;
             j--;
         }
-        result_data[pos+1] = value;
+        if (! value.match(/^\s+$/)) {
+            result_data[pos+1] = value + (result_data[pos+1] || '');
+        }
     }
-    delete result_data[0];
+//    delete result_data[0];
     return result_data;
 };
 
@@ -141,13 +150,17 @@ var splice_char = function(seqs,index,insertions) {
                 insertions[i][-1] = '';
             }
             insertions[i][index - 1] = seq.charAt(index);
-            if (insertions[i][index]) {
+            if (insertions[i][index] && insertions[i][index].match(/\w/)) {
                 insertions[i][index-1] += insertions[i][index];
                 delete insertions[i][index];
             }
         } else {
             if ( insertions[i] ) {
-                insertions[i][-1] += ' ';
+                insertions[i][index - 1] = ' ';
+                if ((insertions[i][index] || '').match(/^\s+$/)) {
+                    insertions[i][index-1] += insertions[i][index];
+                    delete insertions[i][index];
+                }
             }
         }
         seqs[i] = seq.slice(0,index) + seq.slice(index+1);
@@ -164,7 +177,7 @@ MASCP.ClustalRunner.Result.prototype.alignToSequence = function(seq_index) {
         }
     }
     for (i = 0; i < seqs.length; i++) {
-        if (insertions[i]) {
+        if (insertions[i] && i != seq_index) {
             insertions[i] = normalise_insertions(insertions[i]);
             var seq = seqs[i];
             seqs[i] = { 'sequence' : seq, 'insertions' : insertions[i] };
@@ -177,7 +190,81 @@ MASCP.ClustalRunner.Result.prototype.alignToSequence = function(seq_index) {
     this._raw_data.data.sequences = seqs;
 };
 
+/*
+
+Test suite for calculating positions
+
+var aligner = 0;
+foo = new MASCP.ClustalRunner.Result();
+foo._raw_data = {"data" : { "alignment" : "****************" , "sequences" : [ "----12345678----", "XXXXXXXXXXXXXXXX", "ABCDABC---ABCDAB" ] }};
+foo.alignToSequence(aligner);
+console.log(foo.getSequences());
+console.log(foo.calculatePositionForSequence(0,1));
+console.log(foo.calculatePositionForSequence(0,2));
+console.log(foo.calculatePositionForSequence(0,3));
+console.log(foo.calculatePositionForSequence(0,4));
+console.log(foo.calculatePositionForSequence(0,5));
+console.log(foo.calculatePositionForSequence(0,6));
+console.log(foo.calculatePositionForSequence(0,7));
+console.log(foo.calculatePositionForSequence(0,8));
+
+*/
+MASCP.ClustalRunner.Result.prototype.calculatePositionForSequence = function(idx,pos) {
+    var inserts = this._raw_data.data.sequences[idx].insertions || {};
+    var result = pos;
+    var actual_position = 0;
+    var seq = this._raw_data.data.sequences[idx].toString();
+    for (var i = 0 ; i < seq.length; i++ ) {
+        if (inserts[i]) {
+            actual_position += inserts[i].length;
+        }
+        actual_position += 1;
+        if (seq.charAt(i) == '-') {
+            actual_position -= 1;
+        }
+        if (pos <= actual_position) {
+            if (pos == actual_position) {
+                return (i+1);
+            } else {
+                return -1 * i;
+            }
+        }
+    }
+    return -1 * seq.length;
+};
+
+
 })();
+
+MASCP.ClustalRunner.prototype.setupSequenceRenderer = function(renderer) {
+    var self = this;
+
+    jQuery(renderer).bind('readerRegistered',function(ev,reader) {
+        if (self == reader) {
+            return;
+        }
+        var old = reader.gotResult;
+        reader.gotResult = function() {
+            var index = 0;
+            for (var i = 0; i < self.sequences.length; i++) {
+                if (self.sequences[i].agi && self.sequences[i].agi == reader.agi) {
+                    console.log(reader.agi);
+                    index = i;
+                }
+            }
+            var old_get_aas = widget_rend.getAminoAcidsByPosition;
+            var old_get_pep = widget_rend.getAminoAcidsByPeptide;
+            widget_rend.getAminoAcidsByPosition = function(aas) {
+                var new_aas = aas.map(function(aa) { return Math.abs(self.result.calculatePositionForSequence(index,aa)); });
+                return old_get_aas.call(this,new_aas);
+            };
+            widget_rend.getAminoAcidsByPeptide = function() {};
+            old.call(reader);
+            widget_rend.getAminoAcidsByPosition = old_get_aas;
+            widget_rend.getAminoAcidsByPeptide = old_get_pep;
+        }
+    });
+}
 
 MASCP.ClustalRunner.Result.prototype.getSequences = function() {
     if (this._raw_data && this._raw_data.data && this._raw_data.data.sequences) {

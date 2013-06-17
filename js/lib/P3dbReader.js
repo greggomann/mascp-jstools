@@ -116,7 +116,7 @@ MASCP.P3dbReader.prototype.setupSequenceRenderer = function(sequenceRenderer)
         var res = this.result;
         var peps = res.getPeptides();
         if (peps.length > 0) {
-            MASCP.registerLayer('p3db_controller',{ 'fullname' : 'P3DB (mod)', 'color' : color });
+            MASCP.registerLayer('p3db_controller',{ 'fullname' : 'P3DB (mod)', 'color' : color, 'hover_peptides' : true });
         }
         for(var i = 0; i < peps.length; i++) {
             var peptide = peps[i].sequence;
@@ -130,7 +130,7 @@ MASCP.P3dbReader.prototype.setupSequenceRenderer = function(sequenceRenderer)
             var layer_name = 'p3db_tax_'+organism.id;
             var peps = res.getOrthologousPeptides(organism.id);
             if (peps.length > 0) {
-                MASCP.registerLayer(layer_name,{ 'fullname' : organism.name, 'group' : 'p3db_experimental', 'color' : color });
+                MASCP.registerLayer(layer_name,{ 'fullname' : organism.name, 'group' : 'p3db_experimental', 'color' : color, 'hover_peptides' : true });
             }
             for(var i = 0; i < peps.length; i++) {
                 var peptide = peps[i].sequence;

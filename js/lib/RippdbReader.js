@@ -70,7 +70,7 @@ MASCP.RippdbReader.prototype.setupSequenceRenderer = function(sequenceRenderer)
         var icons = [];
         
         if (specs.length > 0) {
-            MASCP.registerLayer(overlay_name,{ 'fullname' : 'RIPP-DB (mod)', 'color' : '#666666', 'css' : css_block });
+            MASCP.registerLayer(overlay_name,{ 'fullname' : 'RIPP-DB (mod)', 'color' : '#666666', 'css' : css_block , 'hover_peptides' : true });
 
             MASCP.registerGroup('prippdb_peptides', {'fullname' : 'Phosphorylation Rippdb', 'hide_member_controllers' : true, 'hide_group_controller' : true, 'color' : '#666666' });
             if (sequenceRenderer.createGroupController) {
@@ -97,7 +97,7 @@ MASCP.RippdbReader.prototype.setupSequenceRenderer = function(sequenceRenderer)
                 continue;
             }
             var layer_name = 'prippdb_spectrum_'+spec.spectrum_id;
-            MASCP.registerLayer(layer_name, { 'fullname': 'Spectrum '+spec.spectrum_id, 'group' : 'prippdb_peptides', 'color' : '#666666', 'css' : css_block });
+            MASCP.registerLayer(layer_name, { 'fullname': 'Spectrum '+spec.spectrum_id, 'group' : 'prippdb_peptides', 'color' : '#666666', 'css' : css_block, 'hover_peptides' : true });
             for(var i = 0; i < peps.length; i++) {
                 var peptide = peps[i].sequence;
                 var peptide_bits = sequenceRenderer.getAminoAcidsByPeptide(peptide);
@@ -108,8 +108,8 @@ MASCP.RippdbReader.prototype.setupSequenceRenderer = function(sequenceRenderer)
                 icons.push(peptide_bits.addToLayer('prippdb_experimental'));
 
                 for (var k = 0; k < peps[i].positions.length; k++ ) {
-                    icons = icons.concat(peptide_bits[peps[i].positions[k] - 1].addToLayer('prippdb_experimental'));
-                    peptide_bits[peps[i].positions[k] - 1].addToLayer(layer_name);
+                    icons = icons.concat(peptide_bits[peps[i].positions[k] - 1].addToLayer('prippdb_experimental',{ 'height' : 20, 'offset': -2.5 }));
+                    peptide_bits[peps[i].positions[k] - 1].addToLayer(layer_name,{ 'height' : 20, 'offset': -2.5 });
                 }
 
             }

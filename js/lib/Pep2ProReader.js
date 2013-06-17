@@ -170,7 +170,7 @@ MASCP.Pep2ProReader.prototype._rendererRunner = function(sequenceRenderer) {
 
         var css_block = ' .overlay { display: none; } .tracks .active { fill: #000099; } .inactive { display: none; } .active .overlay { display: block; top: 0px; background: #000099; } ';
 
-        MASCP.registerLayer(overlay_name,{ 'fullname' : this.result._long_name_map[tissue], 'group' : 'pep2pro', 'color' : '#000099', 'css' : css_block, 'data' : { 'po' : tissue, 'count' : peptide_counts } });
+        MASCP.registerLayer(overlay_name,{ 'fullname' : this.result._long_name_map[tissue], 'group' : 'pep2pro', 'color' : '#000099', 'css' : css_block, 'data' : { 'po' : tissue, 'count' : peptide_counts }, 'hover_peptides' : true });
 
         var positions = this._normalise(this._mergeCounts(peptide_counts));
         var index = 1;
@@ -234,7 +234,7 @@ MASCP.Pep2ProReader.prototype._groupSummary = function(sequenceRenderer)
 
     var css_block = ' .overlay { display: none; } .tracks .active { fill: #000099; } .inactive { display: none; } .active .overlay { display: block; top: 0px; background: #000099; } ';
     
-    MASCP.registerLayer(overlay_name,{ 'fullname' : 'Pep2Pro MS/MS', 'color' : '#000099', 'css' : css_block });
+    MASCP.registerLayer(overlay_name,{ 'fullname' : 'Pep2Pro MS/MS', 'color' : '#000099', 'css' : css_block, 'hover_peptides' : true });
 
 
     var an_agi = this.result.agi;
@@ -251,7 +251,13 @@ MASCP.Pep2ProReader.prototype._groupSummary = function(sequenceRenderer)
             if ( ! positions[index] ) {
                 endpoint -= 1;
             }
-            sequenceRenderer.getAminoAcidsByPosition([last_start])[0].addBoxOverlay(overlay_name,endpoint);
+
+            if (sequenceRenderer.getAminoAcidsByPosition([last_start])[0]) {
+                sequenceRenderer.getAminoAcidsByPosition([last_start])[0].addBoxOverlay(overlay_name,endpoint);
+            } else if (sequenceRenderer.getAminoAcidsByPosition([last_start-1])[0]) {
+                sequenceRenderer.getAminoAcidsByPosition([last_start-1])[0].addBoxOverlay(overlay_name,endpoint);
+            }
+
             last_start = null;
         }
         if (positions[index] && last_start === null) {

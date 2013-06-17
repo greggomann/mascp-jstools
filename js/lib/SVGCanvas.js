@@ -162,9 +162,11 @@ var SVGCanvas = SVGCanvas || (function() {
                             curr_style += '; '+hash[key];
                             value = curr_style;
                         }
+                        var has_translate = an_array[i].hasAttribute('transform') && (an_array[i].getAttribute('transform').indexOf('translate') >= 0);
+
                         if (key == 'height' && an_array[i].setHeight ) { //hasAttribute('transform') && ! an_array[i].no_scale) {
                             an_array[i].setHeight(hash[key]);
-                        } else if  (! (an_array[i].hasAttribute('transform') && (key == 'y' || key == 'x'))) {
+                        } else if  (! (has_translate && (key == 'y' || key == 'x'))) {
                             an_array[i].setAttribute(key, value);                        
                         }
                         if (key == 'y' && an_array[i].hasAttribute('d')) {
@@ -217,7 +219,7 @@ var SVGCanvas = SVGCanvas || (function() {
         an_array.refresh_zoom = function() {
             for (var i = 0; i < an_array.length; i++ ) {
                 if (an_array[i].zoom_level && an_array[i].zoom_level == 'text') {
-                    if (canvas.zoom > 3.5) {
+                    if (an_array[i].ownerSVGElement.zoom > 3.5) {
                         an_array[i].setAttribute('display', 'inline');
                         an_array[i].setAttribute('opacity', 1);
                     } else {
@@ -226,7 +228,7 @@ var SVGCanvas = SVGCanvas || (function() {
                 }
             
                 if (an_array[i].zoom_level && an_array[i].zoom_level == 'summary') {
-                    if (canvas.zoom <= 3.5) {
+                    if (an_array[i].ownerSVGElement.zoom <= 3.5) {
                         an_array[i].setAttribute('display', 'inline');
                         an_array[i].setAttribute('opacity', 1);
                     } else {
@@ -340,11 +342,11 @@ var SVGCanvas = SVGCanvas || (function() {
         
         var RS = canvas.RS || DEFAULT_RS;
         canvas.RS = RS;
-        
+        canvas.font_order = 'Helvetica, Verdana, Arial, Sans-serif'
         extended_elements.push(canvas);
         
         canvas.makeEl = function(name,attributes) {
-            var result = document.createElementNS(svgns,name);
+            var result = canvas.ownerDocument.createElementNS(svgns,name);
             for (var attribute in attributes) {
                 if (attributes.hasOwnProperty(attribute)) {
                     result.setAttribute(attribute, attributes[attribute]);
@@ -636,9 +638,9 @@ var SVGCanvas = SVGCanvas || (function() {
 
         canvas.callout = function(x,y,content,opts) {
             var callout = this.group();
-            var back = this.rect(-0.5*(opts.width+4),20,opts.width+4,opts.height+4);
+            var back = this.roundRect(-0.5*(opts.width+4),20,opts.width+4,opts.height+4,4);
             back.setAttribute('fill','#000000');
-            var pres_box = this.rect(-0.5*(opts.width+1),22,opts.width+1,opts.height);
+            var pres_box = this.roundRect(-0.5*(opts.width+1),22,opts.width+1,opts.height,4);
             pres_box.setAttribute('fill','#eeeeee');
             callout.push(back);
             callout.push(pres_box);
@@ -647,7 +649,7 @@ var SVGCanvas = SVGCanvas || (function() {
             callout.push(poly);
             var fo = document.createElementNS(svgns,'foreignObject');
             fo.setAttribute('x',-0.5*(opts.width+1)*RS);
-            fo.setAttribute('y',21*RS);
+            fo.setAttribute('y',22*RS);
             fo.setAttribute('width',opts.width*RS);
             fo.setAttribute('height',opts.height*RS);
             callout.push(fo);
@@ -656,10 +658,29 @@ var SVGCanvas = SVGCanvas || (function() {
             var body = document.createElementNS('http://www.w3.org/1999/xhtml','body');
             body.style.fontSize = (15*RS) +'px';
             body.style.margin = (5*RS)+'px';
+            body.style.height = opts.height*RS*10+'px';
             html.appendChild(body);
             body.appendChild(content);
             fo.appendChild(html);
             callout.setAttribute('transform','translate('+(x*RS)+','+((y+20)*RS)+')');
+            callout.setHeight = setHeight;
+            if ( ! opts.align ) {
+                var currVbox = parseFloat(this.getAttribute('viewBox').split(/\s+/)[2]);
+                if (((x + 10) + 0.5*opts.width)*RS > currVbox ) {
+                    opts.align = 'right';
+                }
+                if ((x - 0.5*opts.width)*RS < 0) {
+                    opts.align = 'left';
+                }
+            }
+            if (opts.align) {
+                var shifter = opts.align == "right" ? -0.5 : 0.5;
+                back.setAttribute('transform', 'translate('+(shifter*opts.width*RS)+',0)');
+                pres_box.setAttribute('transform', 'translate('+(shifter*opts.width*RS)+',0)');
+                poly.setAttribute('transform', 'translate('+(0*shifter*opts.width*RS)+',0)');
+                poly.setAttribute('points', shifter > 0 ? "0,500 500,1000 0,1000" : "0,500 0,1000 -500,1000");
+                fo.setAttribute('transform', 'translate('+(shifter*opts.width*RS)+',0)');
+            }
             return callout;
         };
 
@@ -685,24 +706,24 @@ var SVGCanvas = SVGCanvas || (function() {
                 var scale_val = setHeight.call(this,height);
                 this.setAttribute('height',height);
                 var top_offset = this.offset;
+                /*
                 try {
                     var widget_width = this.firstChild.firstChild.getBBox().width;
                 } catch (e) {
                     console.log('getBBox() threw error in canvas.growingMarker');
                 }
-                
+                */
                 var widget_height = parseFloat(this.firstChild.firstChild.getAttribute('height'));
-                var centering_offset = 3/5*widget_height;
+                if ( ! this.angle ) {
+                    this.angle = 0;
+                }
                 if (this.angle > 10) {
                     centering_offset = 0;
                 }
                 if (top_offset == 0) {
                     centering_offset = 0;
                 }
-                if (this.setHeight != arguments.callee ) {
-                    scale_val = 1;
-                }
-                this.firstChild.setAttribute('transform','translate(-100,'+(top_offset*RS/scale_val - centering_offset)+') rotate('+this.angle+',100,0)');
+                this.firstChild.setAttribute('transform','translate(-100,'+(top_offset*RS)+') rotate('+this.angle+',100,0)');
             };
             return result;
         };
@@ -737,22 +758,25 @@ var SVGCanvas = SVGCanvas || (function() {
             };
 
             var marker = this.group();
-
+            if (! opts ) {
+                opts = {};
+            }
             var fill_color = (opts && opts.border) ? opts.border : 'rgb(0,0,0)';
+            if ( ! opts.bare_element ) {
+                marker.push(this.circle(0,-0.5*r,r));
 
-            marker.push(this.circle(0,-0.5*r,r));
+                marker.lastChild.style.fill = fill_color;
 
-            marker.lastChild.style.fill = fill_color;
+                marker.push(this.circle(0,1.5*r,r));
 
-            marker.push(this.circle(0,1.5*r,r));
+                marker.lastChild.style.fill = fill_color;
 
-            marker.lastChild.style.fill = fill_color;
-
-            var arrow = this.poly((-0.9*r*RS)+','+(0*r*RS)+' 0,'+(-2.5*r*RS)+' '+(0.9)*r*RS+','+(0*r*RS));
+                var arrow = this.poly((-0.9*r*RS)+','+(0*r*RS)+' 0,'+(-2.5*r*RS)+' '+(0.9)*r*RS+','+(0*r*RS));
 
 
-            arrow.setAttribute('style','fill:'+fill_color+';stroke-width: 0;');
-            marker.push(arrow);
+                arrow.setAttribute('style','fill:'+fill_color+';stroke-width: 0;');
+                marker.push(arrow);
+            }
             marker.setAttribute('transform','translate('+((cx)*RS)+','+0.5*cy*RS+') scale(1)');
             marker.setHeight = setHeight;
             marker.setAttribute('height', dim.R*RS);
@@ -766,7 +790,13 @@ var SVGCanvas = SVGCanvas || (function() {
 		} 
 	    } else {
                 marker.contentElement = this.group();
+                if (! opts.bare_element ) {
+                    marker.contentElement.push(this.text_circle(0,0.5*r,1.75*r,"",opts));
+                }
                 if (symbol) {
+                    if ( ! opts.bare_element ) {
+                        symbol.setAttribute('transform','translate(0,'+(0.5*r*RS)+')');
+                    }
                     marker.contentElement.push(symbol);
                 }
                 marker.push(marker.contentElement);
@@ -870,7 +900,12 @@ var SVGCanvas = SVGCanvas || (function() {
 
             marker_group.push(back);
             var text = this.text(0,dim.CY-0.5*dim.R,txt);
-            text.setAttribute('font-size',r*RS);
+            if (txt.length >= 3) {
+                var font_size = r*RS*0.8;
+            } else {
+                var font_size = r*RS;
+            }
+            text.setAttribute('font-size',font_size);
             text.setAttribute('font-weight','bolder');
             text.setAttribute('fill','#ffffff');
             text.setAttribute('style','font-family: sans-serif; text-anchor: middle;');
@@ -950,7 +985,7 @@ var SVGCanvas = SVGCanvas || (function() {
                 a_tspan.textContent = text;
                 a_tspan.setAttribute('dy','0');
             }
-            a_text.style.fontFamily = 'Helvetica, Verdana, Arial, Sans-serif';
+            a_text.style.fontFamily = this.font_order || 'Helvetica, Verdana, Arial, Sans-serif';
             a_text.setAttribute('x',typeof x == 'string' ? x : x * RS);
             a_text.setAttribute('y',typeof y == 'string' ? y : y * RS);        
             this.appendChild(a_text);
@@ -994,6 +1029,39 @@ var SVGCanvas = SVGCanvas || (function() {
             }));
             g.setAttribute('transform','translate('+x*RS+','+y*RS+')');
             return g;
+        };
+
+        // Calculate the bounding box of an element with respect to its parent element
+        // Thanks to http://stackoverflow.com/questions/10623809/get-bounding-box-of-element-accounting-for-its-transform
+        canvas.transformedBoundingBox = function(el){
+            var bb  = el.getBBox(),
+                svg = el.ownerSVGElement,
+                m   = el.getTransformToElement(el.parentNode);
+            // Create an array of all four points for the original bounding box
+            var pts = [
+                svg.createSVGPoint(), svg.createSVGPoint(),
+                svg.createSVGPoint(), svg.createSVGPoint()
+            ];
+            pts[0].x=bb.x;          pts[0].y=bb.y;
+            pts[1].x=bb.x+bb.width; pts[1].y=bb.y;
+            pts[2].x=bb.x+bb.width; pts[2].y=bb.y+bb.height;
+            pts[3].x=bb.x;          pts[3].y=bb.y+bb.height;
+
+            // Transform each into the space of the parent,
+            // and calculate the min/max points from that.
+            var xMin=Infinity,xMax=-Infinity,yMin=Infinity,yMax=-Infinity;
+            pts.forEach(function(pt){
+                pt = pt.matrixTransform(m);
+                xMin = Math.min(xMin,pt.x);
+                xMax = Math.max(xMax,pt.x);
+                yMin = Math.min(yMin,pt.y);
+                yMax = Math.max(yMax,pt.y);
+            });
+
+            // Update the bounding box with the new values
+            bb.x = xMin; bb.width  = xMax-xMin;
+            bb.y = yMin; bb.height = yMax-yMin;
+            return bb;
         };
         
         canvas.set = function() {
