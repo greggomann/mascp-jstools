@@ -153,7 +153,7 @@ MASCP.PubmedReader.prototype.setupSequenceRenderer = function(sequenceRenderer)
         var publications= this.result.getPublications();
         for(var i = 0; i < publications.length; i++) {
             var layer_name = 'pubmed_publication'+publications[i];
-            MASCP.registerLayer(layer_name, { 'fullname': 'Publication'+publications[i], 'group' : 'pubmed', 'color' : '#000000', 'css' : css_block, 'hover_peptides' : true });
+            MASCP.registerLayer(layer_name, { 'fullname': 'Publication '+publications[i], 'group' : 'pubmed', 'color' : '#000000', 'css' : css_block, 'hover_peptides' : true });
             MASCP.getLayer(layer_name).href = 'http://www.ncbi.nlm.nih.gov/pubmed/'+publications[i];
             for (var j = 0 ; j < peps.length; j++) {
                 var peptide = peps[j];
