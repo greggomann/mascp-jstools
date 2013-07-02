@@ -527,9 +527,9 @@ var SVGCanvas = SVGCanvas || (function() {
                 legend_rect.setAttribute('y', 0);
                 legend_rect.setAttribute('height', 20);
                 legend_rect.setAttribute('width', 330);
-                legend_rect.setAttribute('fill', 'url(#legend_gradient)');
+                legend_rect.setAttribute('fill', 'url(#legend_gradient_'+argObject.id+')');
                 legend_g.appendChild(legend_rect);
-                defs.appendChild(canvas.make_gradient('legend_gradient', '100%', '0%', [argObject.lftColor, argObject.rtColor], [1, 1]));
+                defs.appendChild(canvas.make_gradient('legend_gradient_'+argObject.id, '100%', '0%', [argObject.lftColor, argObject.rtColor], [1, 1]));
                 var legend_text = document.createElementNS(svgns, 'text');
                 var legend_lft_tspan = document.createElementNS(svgns, 'tspan');
                 legend_lft_tspan.textContent = argObject.lftLegend;
@@ -539,7 +539,9 @@ var SVGCanvas = SVGCanvas || (function() {
                 var legend_rt_tspan = document.createElementNS(svgns, 'tspan');
                 legend_rt_tspan.textContent = argObject.rtLegend;
                 legend_rt_tspan.setAttribute('y', 35);
-                legend_rt_tspan.setAttribute('x', 250);
+                legend_rt_tspan.setAttribute('x', 330);
+                legend_rt_tspan.setAttribute('width', 165);
+                legend_rt_tspan.setAttribute('text-anchor', 'end');
                 legend_text.appendChild(legend_rt_tspan);
                 legend_g.appendChild(legend_text);
 

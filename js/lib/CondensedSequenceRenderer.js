@@ -769,6 +769,7 @@ MASCP.CondensedSequenceRenderer.prototype.fillModhunter = function(modhunterObje
         rect.setAttribute('cursor', 'default');
 
         var popupData = { 'Mod Score': scr };
+        popupData.gradient_legend = { 'lftColor': 'rgb(255,255,255)', 'rtColor': 'rgb(255,0,0)', 'rtLegend': '100', 'lftLegend': '0', 'id': 'modhunter' };
         bean.add(rect, 'mouseenter', function() { mouseOver('on', rect, canvas, popupData); });
         bean.add(rect, 'mouseleave', function() { mouseOver('off', rect, canvas, popupData); });
 
@@ -878,10 +879,11 @@ MASCP.CondensedSequenceRenderer.prototype.createOrthology = function(conservatio
 
         // Add popup to each rect in the orthology track to display a color legend
         var popupData = { 'gradient_legend':
-            {'lftColor': 'rgb(255,255,255)',
+            { 'lftColor': 'rgb(255,255,255)',
             'rtColor': 'rgb(0,0,255)',
             'lftLegend': 'No Conservation',
-            'rtLegend': 'Highly Conserved'}
+            'rtLegend': 'Highly Conserved',
+            'id': 'orthology' }
         };
         bean.add(rect, 'mouseenter', function() { mouseOver('on', rect, canvas, popupData); });
         bean.add(rect, 'mouseleave', function() { mouseOver('off', rect, canvas, popupData); });
