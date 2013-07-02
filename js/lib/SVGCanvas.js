@@ -462,6 +462,8 @@ var SVGCanvas = SVGCanvas || (function() {
 
         // Popup object to be attached to hover events on peptide objects (aka BoxOverlays)
         canvas.popup = function(mouseX,mouseY,clientX,popupData) {
+            var defs = canvas.parentNode.ownerDocument.getElementsByTagNameNS(svgns, 'defs')[0];
+
             // Correct mouse cursor location
             var actualMouseX = mouseX - 7;
             var actualMouseY = mouseY - 130;
@@ -510,14 +512,42 @@ var SVGCanvas = SVGCanvas || (function() {
             a_popup.appendChild(popup_line);
 
             // Initialize line counter k
-            var k = 1;
+            var k = 0;
             var lineHeight = 16;
             var lineLength = 38;
             
+            // gradientLegend returns an SVG legend for gradients like the modhunter and orthology track
+            // argObject contains the left and right colors, and text for the legend
+            var gradientLegend = function(argObject) {
+                var legend_g = document.createElementNS(svgns, 'g');
+                //legend_g.setAttribute('height', 330);
+                //legend_g.setAttribute('width', 50);
+                var legend_rect = document.createElementNS(svgns, 'rect');
+                legend_rect.setAttribute('x', 0);
+                legend_rect.setAttribute('y', 0);
+                legend_rect.setAttribute('height', 20);
+                legend_rect.setAttribute('width', 330);
+                legend_rect.setAttribute('fill', 'url(#legend_gradient)');
+                legend_g.appendChild(legend_rect);
+                defs.appendChild(canvas.make_gradient('legend_gradient', '100%', '0%', [argObject.lftColor, argObject.rtColor], [1, 1]));
+                var legend_text = document.createElementNS(svgns, 'text');
+                var legend_lft_tspan = document.createElementNS(svgns, 'tspan');
+                legend_lft_tspan.textContent = argObject.lftLegend;
+                legend_lft_tspan.setAttribute('y', 35);
+                legend_lft_tspan.setAttribute('x', 0);
+                legend_text.appendChild(legend_lft_tspan);
+                var legend_rt_tspan = document.createElementNS(svgns, 'tspan');
+                legend_rt_tspan.textContent = argObject.rtLegend;
+                legend_rt_tspan.setAttribute('y', 35);
+                legend_rt_tspan.setAttribute('x', 250);
+                legend_text.appendChild(legend_rt_tspan);
+                legend_g.appendChild(legend_text);
+
+                return legend_g;
+            };
+
             // Fill popup content from popupData argument
             if (popupData) {
-                var textX = actualMouseX+offsetX+10;
-
                 // Create foreignObject element which will contain HTML within popup
                 var popupForeign = document.createElementNS(svgns, 'foreignObject');
                 popupForeign.setAttribute('x', xCoord+10);
@@ -525,34 +555,54 @@ var SVGCanvas = SVGCanvas || (function() {
                 var popupBody = document.createElement('body');
                 popupBody.setAttribute('xmlns', 'http://www.w3.org/1999/xhtml');
                 popupBody.setAttribute('style', 'vertical-align: middle');
-                //popupForeign.appendChild(popupBody);
-                a_popup.appendChild(popupForeign);
 
                 // Iterate over data to be displayed
-                var firstTitle = true;
+                var shownText = false;
+                var nonLegendData = false;
                 for (var popupKey in popupData) {
-                    var popupValue = new String(popupData[popupKey]);
-                    var popupDiv = document.createElement('div');
-                    popupDiv.setAttribute('style', 'font-family: monospace; font-size: 14px; border-width: 0; word-wrap: break-word');
-                    if (popupKey == 'Sequence') {
-                        k += Math.ceil(popupValue.length / lineLength);
-                        popupDiv.innerHTML = '<strong>' + popupKey + ':</strong><br>' + popupValue;
-                    } else {
-                        k += Math.ceil((popupValue.length+popupKey.length) / lineLength);
-                        popupDiv.innerHTML = '<strong>' + popupKey + ':</strong> ' + popupValue;
+                    if (popupData.hasOwnProperty(popupKey) && popupKey != 'gradient_legend') {
+                        if (k == 0) {
+                            k = 1;
+                        }
+                        if (!shownText) {
+                            a_popup.appendChild(popupForeign);
+                            shownText = true;
+                        }
+                        nonLegendData = true;
+                        var popupValue = new String(popupData[popupKey]);
+                        var popupDiv = document.createElement('div');
+                        popupDiv.setAttribute('style', 'font-family: monospace; font-size: 14px; border-width: 0; word-wrap: break-word');
+                        if (popupKey == 'Sequence') {
+                            k += Math.ceil(popupValue.length / lineLength);
+                            popupDiv.innerHTML = '<strong>' + popupKey + ':</strong><br>' + popupValue;
+                        } else {
+                            k += Math.ceil((popupValue.length+popupKey.length) / lineLength);
+                            popupDiv.innerHTML = '<strong>' + popupKey + ':</strong> ' + popupValue;
+                        }
+                        popupForeign.appendChild(popupDiv);
                     }
-                    popupForeign.appendChild(popupDiv);
+                }
+                // Insert gradient legend for modhunter or orthology, if present
+                if (popupData.gradient_legend) {
+                    var legend = gradientLegend(popupData.gradient_legend);
+                    a_popup.appendChild(legend);
                 }
             }
 
             // Set size and y-position based on amount of text displayed
             var popupHeight = (k * lineHeight) + 20;
-            popup_rect.setAttribute('height', popupHeight);
+            var legendHeight = (popupData.gradient_legend) ? 50 : 0;
+            popup_rect.setAttribute('height', popupHeight+legendHeight);
             popupForeign.setAttribute('height', popupHeight-20);
             // popupTextContainer.setAttribute('y', actualMouseY-(popupHeight/2)+20);
-            var yCoord = actualMouseY - (popupHeight/2);
+            var yCoord = actualMouseY - ((popupHeight+legendHeight)/2);
             popup_rect.setAttribute('y', yCoord);
             popupForeign.setAttribute('y', yCoord+10);
+            if (legend && nonLegendData) {
+                legend.setAttribute('transform', 'translate('+(xCoord+10)+','+(yCoord+popupHeight)+')');
+            } else if (legend) {
+                legend.setAttribute('transform', 'translate('+(xCoord+10)+','+(yCoord+10)+')');
+            }
 
             this.parentNode.appendChild(a_popup);
             return a_popup;

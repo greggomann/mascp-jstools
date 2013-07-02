@@ -827,6 +827,84 @@ MASCP.CondensedSequenceRenderer.prototype.fillModhunter = function(modhunterObje
     return this;
 };
 
+/**
+ * Create a modhunter track and add it to the renderer as a layer
+ */
+MASCP.CondensedSequenceRenderer.prototype.createOrthology = function(conservation) {
+    var RS = this._RS;
+
+    var canvas = this._canvas;
+    var seqLength = this.sequence.length;
+
+    if ( ! canvas ) {
+        var orig_func = arguments.callee;
+        var self = this;
+        this._renderer.bind('sequencechange',function() {
+            this._renderer.unbind('sequencechange',arguments.callee);
+            orig_func.call(self);
+        });
+        log("Delaying rendering, waiting for sequence change");
+        return;
+    }
+    
+    MASCP.registerLayer('orthology_experimental',{ 'fullname' : 'Orthology','color' : '#990000' });
+    this._layer_containers.orthology_experimental.track_height = 9;
+
+    var colorMap = [[0.5, 20], [0.55, 30], [0.6, 40], [0.65, 60], [0.7, 80], [0.75, 100], [0.8, 120], [0.85, 150], [0.9, 180], [0.95, 210], [0.98, 240], [1.0, 255]];
+
+    // scrToColor converts a 0-1 score to a shade of blue
+    var scrToColor = function(scr) {
+        var clrIdx = 0
+        while (colorMap[clrIdx][0] < scr && colorMap[clrIdx][0] != scr) {
+            clrIdx++;
+        }
+        var colorStr = '' + (255-colorMap[clrIdx][1])
+        return ('rgb(' + colorStr + ',' + colorStr + ',255)');
+    }
+
+    var defs = canvas.parentNode.ownerDocument.getElementsByTagNameNS(svgns, 'defs')[0];
+
+    // insertGrad adds a gradient-filled rect to the modhunter to transition between colors
+    var insertGrad = function(lft, rt, lftScr, rtScr) {
+        var rect = this._canvas.rect(lft, 0, rt-lft, 4);
+        var lftColor = scrToColor(lftScr);
+        var rtColor = scrToColor(rtScr);
+
+        // Create gradient object
+        defs.appendChild(canvas.mod_gradient('ortho_gradient_'+lft.toString(), lftColor, rtColor));
+
+        rect.setAttribute('stroke', 'url(#ortho_gradient_'+lft.toString()+')');
+        rect.setAttribute('fill', 'url(#ortho_gradient_'+lft.toString()+')');
+
+        // Add popup to each rect in the orthology track to display a color legend
+        var popupData = { 'gradient_legend':
+            {'lftColor': 'rgb(255,255,255)',
+            'rtColor': 'rgb(0,0,255)',
+            'lftLegend': 'No Conservation',
+            'rtLegend': 'Highly Conserved'}
+        };
+        bean.add(rect, 'mouseenter', function() { mouseOver('on', rect, canvas, popupData); });
+        bean.add(rect, 'mouseleave', function() { mouseOver('off', rect, canvas, popupData); });
+        rect.setAttribute('cursor', 'default');
+        this._layer_containers.orthology_experimental.push(rect);
+
+        return this;
+    }
+
+    var leftIndex = -1;
+    var storedScore = 0;
+    var thisScore = -1;
+    
+    for (var i = 0; i < conservation.length; i++) {
+        if (i > 0) {
+            insertGrad.call(this, i-1, i, storedScore, conservation[i]);
+        }
+        storedScore = conservation[i];
+    }
+
+    return this;
+};
+
 (function() {
 var addElementToLayer = function(layerName,opts) {
     var canvas = this._renderer._canvas;
@@ -2041,7 +2119,7 @@ clazz.prototype.refresh = function(animated) {
             }
             if (this.navigation) {
                 y_val -= 1*container.track_height/this.zoom;
-                var theseOpts = (name == 'modhunter') ? { 'font-scale' : 0.6 } : {};
+                var theseOpts = (name == 'modhunter' || name == 'orthology_experimental') ? { 'font-scale' : 0.6 } : {};
                 this.navigation.renderTrack(MASCP.getLayer(name), y_val*RS , RS * 3 * container.track_height / this.zoom, theseOpts );
                 track_heights += container.track_height;
             }
