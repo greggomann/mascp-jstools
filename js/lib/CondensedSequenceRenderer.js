@@ -902,10 +902,9 @@ MASCP.CondensedSequenceRenderer.prototype.createOrthology = function(conservatio
     var storedScore = 0;
     var thisScore = -1;
     
-    for (var i = 0; i < conservation.length; i++) {
-        if (i > 0) {
-            insertGrad.call(this, i-1, i, storedScore, conservation[i]);
-        }
+    insertGrad.call(this, 0, 0.5, conservation[0], conservation[0]);
+    for (var i = 1; i < conservation.length; i++) {
+        insertGrad.call(this, i-0.5, i+0.5, storedScore, conservation[i]);
         storedScore = conservation[i];
     }
 
