@@ -247,6 +247,12 @@ MASCP.Modhunter.prototype.calcScores = function() {
 
     var seqLength = this.whole_sequence.length;
 
+    // totalCoverage contains the sum of gator_coverage over all residues
+    var totalCoverage = 0;
+    for (var j = 0; j < seqLength; j++) {
+        totalCoverage += this.sequence[j].gator_coverage;
+    }
+
     // Set protein abundance score
     var abScore = (this.peptide_total / this.tryptic_total) * 100;
     
@@ -257,6 +263,26 @@ MASCP.Modhunter.prototype.calcScores = function() {
     }
     this.abundance_score = i;
     jQuery('#abundance').text(i);
+
+    // Look for signs of C or N-terminal processing
+    if (this.abundance_score >= 50) {
+        var covCount = 0;
+        for (var k = 0; covCount < (totalCoverage*0.05); k++) {
+            covCount += this.sequence[k].gator_coverage;
+        }
+        if (k > parseInt(seqLength*0.15)) {
+            // n_terminal property contains the residue index at end of processing region
+            this.n_terminal = k-1;
+        }
+        covCount = 0;
+        for (var k = seqLength-1; covCount < (totalCoverage*0.05); k--) {
+            covCount += this.sequence[k].gator_coverage;
+        }
+        if (seqLength-k > parseInt(seqLength*0.15)) {
+            // c_terminal property contains residue index at beginning of processing region
+            this.c_terminal = k+1;
+        }
+    }
 
     // Iterate through amino acids and compute modhunter rating from 0-100 for each
     for (var q = 0; q < seqLength; q++) {
@@ -270,6 +296,13 @@ MASCP.Modhunter.prototype.calcScores = function() {
         var gapScale = (Math.max(this.abundance_score - 70, 0) / 30) * Math.max((4 - this.sequence[q].gator_coverage) / 4, 0) * 0.7;
         // modScore is the ModHunter score
         var modScore = Math.round(Math.min(Math.max(predScore - gatScore + gapScale, 0), 1) * abScale * 100);
+        if (this.n_terminal && q <= this.n_terminal) {
+            console.log('n-terminal: '+q);
+            modScore = Math.min(modScore+60, 100);
+        } else if (this.c_terminal && q >= this.c_terminal) {
+            console.log('c-terminal: '+q);
+            modScore = Math.min(modScore+60, 100);
+        }
         this.sequence[q].score = modScore;
     }
 
