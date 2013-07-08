@@ -82,7 +82,8 @@ MASCP.Modhunter.prototype.countCoverage = function(modObject, reader) {
                     'MASCP.GelMapReader': ['', ''],
                     'MASCP.ProteotypicReader': ['pvalue', 'value'],
                     'MASCP.PubmedReader': ['', ''],
-                    'MASCP.SnpReader': ['', ''] };
+                    'MASCP.SnpReader': ['', ''],
+                    'MASCP.OrthologyReader': ['', ''] };
 
     var getIndex = function(pepSeq) {
         return self.whole_sequence.indexOf(pepSeq);
@@ -171,6 +172,8 @@ MASCP.Modhunter.prototype.countCoverage = function(modObject, reader) {
                 for (var accIdx in accList) {
                     getPeps.push.apply(getPeps, reader.result.getSnp(accList[accIdx]));
                 }
+            } else if (readerName == 'MASCP.OrthologyReader') {
+                getPeps = reader.result.getConservation();
             } else {
                 getPeps = reader.result.getPeptides();
             }
@@ -207,6 +210,10 @@ MASCP.Modhunter.prototype.countCoverage = function(modObject, reader) {
                         modObject.sequence[getPeps[pep][0]-1].snp_coverage += 1;
                     }
                     break;
+                case 'MASCP.OrthologyReader':
+                    if (modObject.sequence[pep]) {
+                        modObject.sequence[pep].conservation = getPeps[pep];
+                    }
                 default:
                     var thisIdx = convertToIndeces(getPeps[pep].sequence);
                     var firstLoop = true;
@@ -294,8 +301,10 @@ MASCP.Modhunter.prototype.calcScores = function() {
         var abScale = Math.min(Math.max(this.abundance_score - 20, 0) / 50, 1);
         // gapScale adds to the mod score in gaps when protein abundance is high
         var gapScale = (Math.max(this.abundance_score - 70, 0) / 30) * Math.max((4 - this.sequence[q].gator_coverage) / 4, 0) * 0.7;
+        // conScale is based on the orthology track's conservation value
+        var conScale = (this.sequence[q].conservation) ? this.sequence[q].conservation : 1;
         // modScore is the ModHunter score
-        var modScore = Math.round(Math.min(Math.max(predScore - gatScore + gapScale, 0), 1) * abScale * 100);
+        var modScore = Math.round(Math.min(Math.max(predScore - gatScore + gapScale, 0), 1) * abScale * conScale * 100);
         if (this.n_terminal && q <= this.n_terminal) {
             console.log('n-terminal: '+q);
             modScore = Math.min(modScore+60, 100);
