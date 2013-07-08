@@ -789,13 +789,18 @@ MASCP.CondensedSequenceRenderer.prototype.fillModhunter = function(modhunterObje
 
         rect.setAttribute('stroke', 'url(#mod_gradient_'+lft.toString()+')');
         rect.setAttribute('fill', 'url(#mod_gradient_'+lft.toString()+')');
+        rect.setAttribute('cursor', 'default');
 
         // If one side of this gradient is zero, attach a popup with the non-zero Mod Score
         if ((lftScr == 0 || rtScr == 0) && !(lftScr > 0 && rtScr > 0)) {
             var popupData = { 'Mod Score': (lftScr > 0) ? lftScr : rtScr };
             bean.add(rect, 'mouseenter', function() { mouseOver('on', rect, canvas, popupData); });
             bean.add(rect, 'mouseleave', function() { mouseOver('off', rect, canvas, popupData); });
-            rect.setAttribute('cursor', 'default');
+        } else {
+            var popupData = {};
+            popupData.gradient_legend = { 'lftColor': 'rgb(255,255,255)', 'rtColor': 'rgb(255,0,0)', 'rtLegend': '100', 'lftLegend': '0', 'id': 'modhunter' };
+            bean.add(rect, 'mouseenter', function() { mouseOver('on', rect, canvas, popupData); });
+            bean.add(rect, 'mouseleave', function() { mouseOver('off', rect, canvas, popupData); });
         }
 
         this._layer_containers.modhunter.push(rect);
