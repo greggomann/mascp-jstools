@@ -2315,6 +2315,7 @@ MASCP.CondensedSequenceRenderer.Zoom = function(renderer) {
                 jQuery(self).unbind('gestureend');
                 jQuery(self).one('gestureend',end_function);
                 timeout = 1;
+                end_function();
             } else {
                 if (! this.refresh.suspended) {
                     timeout = setTimeout(end_function,100);

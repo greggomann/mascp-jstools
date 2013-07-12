@@ -436,9 +436,10 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
         var base_rounded_corner = [12*touch_scale,10*touch_scale];
         rect.setAttribute('rx',base_rounded_corner[0].toString());
         rect.setAttribute('ry',base_rounded_corner[1].toString());    
-        if (! touch_enabled) {
+        // commented out to fix display on touch-enabled laptops
+        //if (! touch_enabled) {
             rect.setAttribute('opacity','0.8');
-        }
+        //}
         rect.style.stroke = '#000000';
         rect.style.strokeWidth = '2px';
         rect.style.fill = '#000000';
@@ -624,7 +625,7 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
         var toggleMouseEvents = function(on) {
             if (track_rects) {
                 (track_rects || []).forEach(function(el) {
-                    el.setAttribute('opacity',on ? '1': (touch_enabled ? "0.5" : "0.1") );
+                    el.setAttribute('opacity',on ? '1': (touch_enabled ? "0.1" : "0.1") );
                     el.setAttribute('pointer-events', on ? 'all' : 'none');
                 });
             }
@@ -663,7 +664,7 @@ MASCP.CondensedSequenceRenderer.Navigation = (function() {
             a_rect.setAttribute('stroke','#000000');
             a_rect.setAttribute('stroke-width','2');
             a_rect.setAttribute('fill','url(#simple_gradient)');
-            a_rect.setAttribute('opacity',touch_enabled ? '0.5' : '0.1');
+            a_rect.setAttribute('opacity',touch_enabled ? '0.1' : '0.1');
             a_rect.setAttribute('pointer-events','none');
             track_rects = track_rects || [];
         
