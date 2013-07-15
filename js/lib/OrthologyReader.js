@@ -15,7 +15,7 @@ MASCP.OrthologyReader = MASCP.buildService(function(data) {
                         return this;
                     });
 
-MASCP.OrthologyReader.SERVICE_URL = 'http://prabi2.inrialpes.fr/at_chloro/annotation/';
+MASCP.OrthologyReader.SERVICE_URL = '';
 
 MASCP.OrthologyReader.prototype.requestData = function()
 {
@@ -86,7 +86,6 @@ MASCP.OrthologyReader.prototype.setupSequenceRenderer = function(sequenceRendere
             jQuery(this.renderers).each(function(i){
                 this.createOrthology(conservation);
             });
-            MASCP.getLayer('orthology_experimental').href = 'http://prabi2.inrialpes.fr/at_chloro/protein/'+reader.agi.toUpperCase();
         }
         jQuery(sequenceRenderer).trigger('resultsRendered',[reader]);
     });
