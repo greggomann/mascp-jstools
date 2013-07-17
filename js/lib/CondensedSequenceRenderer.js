@@ -791,14 +791,13 @@ MASCP.CondensedSequenceRenderer.prototype.fillModhunter = function(modhunterObje
         rect.setAttribute('fill', 'url(#mod_gradient_'+lft.toString()+')');
         rect.setAttribute('cursor', 'default');
 
+        var popupData = { 'gradient_legend': { 'lftColor': 'rgb(255,255,255)', 'rtColor': 'rgb(255,0,0)', 'rtLegend': '100', 'lftLegend': '0', 'id': 'modhunter' } };
         // If one side of this gradient is zero, attach a popup with the non-zero Mod Score
         if ((lftScr == 0 || rtScr == 0) && !(lftScr > 0 && rtScr > 0)) {
-            var popupData = { 'Mod Score': (lftScr > 0) ? lftScr : rtScr };
+            popupData['Mod Score'] = (lftScr > 0) ? lftScr : rtScr;
             bean.add(rect, 'mouseenter', function() { mouseOver('on', rect, canvas, popupData); });
             bean.add(rect, 'mouseleave', function() { mouseOver('off', rect, canvas, popupData); });
         } else {
-            var popupData = {};
-            popupData.gradient_legend = { 'lftColor': 'rgb(255,255,255)', 'rtColor': 'rgb(255,0,0)', 'rtLegend': '100', 'lftLegend': '0', 'id': 'modhunter' };
             bean.add(rect, 'mouseenter', function() { mouseOver('on', rect, canvas, popupData); });
             bean.add(rect, 'mouseleave', function() { mouseOver('off', rect, canvas, popupData); });
         }
@@ -815,7 +814,7 @@ MASCP.CondensedSequenceRenderer.prototype.fillModhunter = function(modhunterObje
     for (var i = 0; i < seqLength; i++) {
         thisScore = modhunterObject.sequence[i].score;
         thisSnp = Math.max(1-(modhunterObject.sequence[i].snp_coverage/50),0);
-        thisScore = thisScore * thisSnp;
+        thisScore = Math.round(thisScore * thisSnp);
         if (thisScore != storedScore) {
             if (storedScore > 0) {
                 insertRect.call(this, (leftIndex == 0) ? leftIndex : leftIndex+0.5, i-0.5, storedScore);
