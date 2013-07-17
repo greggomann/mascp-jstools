@@ -274,10 +274,11 @@ MASCP.Modhunter.prototype.calcScores = function() {
     // Look for signs of C or N-terminal processing
     if (this.abundance_score >= 50) {
         var covCount = 0;
+        var termLength = (seqLength > 200) ? seqLength * 0.2 : 40;
         for (var k = 0; covCount < (totalCoverage*0.05); k++) {
             covCount += this.sequence[k].gator_coverage;
         }
-        if (k > parseInt(seqLength*0.15)) {
+        if (k > parseInt(seqLength*0.08) && k < termLength) {
             // n_terminal property contains the residue index at end of processing region
             this.n_terminal = k-1;
         }
@@ -285,7 +286,7 @@ MASCP.Modhunter.prototype.calcScores = function() {
         for (var k = seqLength-1; covCount < (totalCoverage*0.05); k--) {
             covCount += this.sequence[k].gator_coverage;
         }
-        if (seqLength-k > parseInt(seqLength*0.15)) {
+        if (seqLength-k > parseInt(seqLength*0.08) && k < termLength) {
             // c_terminal property contains residue index at beginning of processing region
             this.c_terminal = k+1;
         }
@@ -302,9 +303,9 @@ MASCP.Modhunter.prototype.calcScores = function() {
         // gapScale adds to the mod score in gaps when protein abundance is high
         var gapScale = (Math.max(this.abundance_score - 70, 0) / 30) * Math.max((4 - this.sequence[q].gator_coverage) / 4, 0) * 0.7;
         // conScale is based on the orthology track's conservation value
-        var conScale = (this.sequence[q].conservation) ? this.sequence[q].conservation : 1;
+        // var conScale = (this.sequence[q].conservation) ? this.sequence[q].conservation : 1;
         // modScore is the ModHunter score
-        var modScore = Math.round(Math.min(Math.max(predScore - gatScore + gapScale, 0), 1) * abScale * conScale * 100);
+        var modScore = Math.round(Math.min(Math.max(predScore - gatScore + gapScale, 0), 1) * abScale * 100);
         if (this.n_terminal && q <= this.n_terminal) {
             console.log('n-terminal: '+q);
             modScore = Math.min(modScore+60, 100);
