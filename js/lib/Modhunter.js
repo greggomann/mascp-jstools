@@ -307,10 +307,8 @@ MASCP.Modhunter.prototype.calcScores = function() {
         // modScore is the ModHunter score
         var modScore = Math.round(Math.min(Math.max(predScore - gatScore + gapScale, 0), 1) * abScale * 100);
         if (this.n_terminal && q <= this.n_terminal) {
-            console.log('n-terminal: '+q);
             modScore = Math.min(modScore+60, 100);
         } else if (this.c_terminal && q >= this.c_terminal) {
-            console.log('c-terminal: '+q);
             modScore = Math.min(modScore+60, 100);
         }
         this.sequence[q].score = modScore;
