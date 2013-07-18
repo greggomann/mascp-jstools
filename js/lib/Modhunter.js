@@ -304,8 +304,10 @@ MASCP.Modhunter.prototype.calcScores = function() {
         var gapScale = (Math.max(this.abundance_score - 70, 0) / 30) * Math.max((4 - this.sequence[q].gator_coverage) / 4, 0) * 0.7;
         // conScale is based on the orthology track's conservation value
         // var conScale = (this.sequence[q].conservation) ? this.sequence[q].conservation : 1;
+        // snpScale is based on the presence of nsNSPs
+        var snpScale = Math.max(1-(this.sequence[q].snp_coverage/50),0);
         // modScore is the ModHunter score
-        var modScore = Math.round(Math.min(Math.max(predScore - gatScore + gapScale, 0), 1) * abScale * 100);
+        var modScore = Math.round(Math.min(Math.max(predScore - gatScore + gapScale, 0), 1) * abScale * snpScale * 100);
         if (this.n_terminal && q <= this.n_terminal) {
             modScore = Math.min(modScore+60, 100);
         } else if (this.c_terminal && q >= this.c_terminal) {
