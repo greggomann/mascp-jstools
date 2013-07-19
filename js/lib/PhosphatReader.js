@@ -254,7 +254,7 @@ MASCP.PhosphatReader.prototype.setupSequenceRenderer = function(sequenceRenderer
         var exp_peptides = this.result.getAllExperimentalPhosphoPeptides();
         if (exp_peptides.length === 0) {
             jQuery(sequenceRenderer).trigger('resultsRendered',[reader]);
-            return;         
+            return;
         }
 
         MASCP.registerLayer('phosphat_experimental', { 'fullname': 'PhosPhAt (mod)', 'color' : '#000000', 'css' : '.active { background: #999999; color: #000000; font-weight: bolder; } .tracks .active { background: #000000; fill: #000000; } .inactive { display: none; }', 'hover_peptides' : true });
@@ -275,7 +275,7 @@ MASCP.PhosphatReader.prototype.setupSequenceRenderer = function(sequenceRenderer
             }
 	        jQuery(sequenceRenderer.getAminoAcidsByPosition(this)).each(function() {
 	            this.addToLayer('phosphat_peptide_'+i, { 'height' : 20, 'offset': -2.5 });
-	            icons = icons.concat(this.addToLayer('phosphat_experimental',{ 'height' : 20, 'offset': -2.5}));
+	            icons = icons.concat(this.addToLayer('phosphat_experimental',{ 'height' : 20, 'offset': -2.5, 'popup': { 'Phosphorylation': this.amino_acid+' '+this._index } }));
 	        });
         });
 

@@ -956,6 +956,14 @@ var addElementToLayer = function(layerName,opts) {
     tracer_marker.setAttribute('transform','translate('+((this._index + 0.5) * this._renderer._RS) +',0.01) scale('+scale+')');
     tracer_marker.setAttribute('height','250');
     tracer_marker.firstChild.setAttribute('transform', 'translate(-100,0) rotate(0,100,0.001)');
+
+    if (opts.popup) {
+        var popupData = opts.popup;
+        bean.add(tracer_marker, 'mouseenter', function() { mouseOver('on', tracer_marker, canvas, popupData); });
+        bean.add(tracer_marker, 'mouseleave', function() { mouseOver('off', tracer_marker, canvas, popupData); });
+        tracer_marker.setAttribute('cursor', 'default');
+    }
+
     var renderer = this._renderer;
     tracer.setHeight = function(height) {
         if (tracer.getAttribute('visibility') == 'hidden') {
@@ -1377,6 +1385,13 @@ var addAnnotationToLayer = function(layerName,width,opts) {
                 }
                 return old_set_height.call(this,hght);
             };
+        }
+
+        if (opts.popup) {
+            var popupData = opts.popup;
+            bean.add(blob, 'mouseenter', function() { mouseOver('on', blob, canvas, popupData); });
+            bean.add(blob, 'mouseleave', function() { mouseOver('off', blob, canvas, popupData); });
+            blob.setAttribute('cursor', 'default');
         }
     }
     

@@ -104,7 +104,8 @@ MASCP.GlycoModReader.prototype.setupSequenceRenderer = function(sequenceRenderer
             icons.push(peptide_bits.addToLayer('glycomod_experimental'));
 
             for (var k = 0; k < pep.de_index.length; k++ ) {
-    	       	icons = icons.concat(peptide_bits[pep.de_index[k] - 1].addToLayer('glycomod_experimental', { 'content' : 'GLY', 'height' : 20, 'offset' : -2.5 }));
+                var bit = peptide_bits[pep.de_index[k] - 1];
+    	       	icons = icons.concat(peptide_bits[pep.de_index[k] - 1].addToLayer('glycomod_experimental', { 'content' : 'GLY', 'height' : 20, 'offset' : -2.5, 'popup': { 'Glycosylation': bit.amino_acid+' '+bit._index } }));
         		peptide_bits[pep.de_index[k] - 1].addToLayer(layer_name, {'content' : 'GLY', 'height' : 20, 'offset' : -2.5 });
             }
         }

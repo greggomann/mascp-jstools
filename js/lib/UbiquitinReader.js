@@ -85,8 +85,6 @@ MASCP.UbiquitinReader.prototype.setupSequenceRenderer = function(sequenceRendere
                     el.style.display = vis ? 'none' : 'inline';
                 });
             });
-            
-            
         }
 
         for (var i = 0; i < peps.length; i++) {
@@ -99,10 +97,10 @@ MASCP.UbiquitinReader.prototype.setupSequenceRenderer = function(sequenceRendere
             }
             peptide_bits.addToLayer(layer_name);
             icons.push(peptide_bits.addToLayer(layer_name));
-
             for (var k = 0; k < peps[i].positions.length; k++ ) {
-                icons = icons.concat(peptide_bits[peps[i].positions[k] - 1].addToLayer(overlay_name, { 'height' : 20 }));
-                peptide_bits[peps[i].positions[k] - 1].addToLayer(layer_name, { 'height' : 20 });
+                var bit = peptide_bits[peps[i].positions[k] - 1];
+                icons = icons.concat(peptide_bits[peps[i].positions[k] - 1].addToLayer(overlay_name, { 'height' : 20, 'offset' : -2.5, 'popup': { 'Ubiquitination': bit.amino_acid+' '+bit._index } }));
+                peptide_bits[peps[i].positions[k] - 1].addToLayer(layer_name, { 'height' : 20, 'offset' : -2.5 });
             }
         }
         jQuery(sequenceRenderer).trigger('resultsRendered',[reader]);
