@@ -782,6 +782,9 @@ base.retrieve = function(agi,callback)
     var waiting_callbacks = [];
     clazz.BulkOperation = function(callback) {
         transaction_ref_count++;
+        if ( ! callback ) {
+            callback = function() {};
+        }
         var trans = function(callback) {
             if ( ! callback ) {
                 callback = function() {};
