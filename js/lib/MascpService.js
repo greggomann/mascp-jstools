@@ -388,7 +388,6 @@ var make_params = function(params) {
 
 var do_request = function(request_data) {
     
-    
     var datablock = null;
     
     if ( ! request_data.url ) {
