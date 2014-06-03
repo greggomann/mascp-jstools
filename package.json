@@ -6,26 +6,26 @@
    "keywords": [
        "bioinformatics",
        "node",
-       "javascript" 
+       "javascript"
    ],
    "maintainers": [
        {
            "name": "Hiren Joshi",
            "email": "",
-           "web": "" 
-       } 
+           "web": ""
+       }
    ],
    "licenses": [
        {
            "type": "GPLv2",
-           "url": "http://www.example.org/licenses/gpl.html" 
-       } 
+           "url": "http://www.example.org/licenses/gpl.html"
+       }
    ],
    "repositories": [
        {
            "type": "git",
-           "url": "https://hirenj@github.com/hirenj/mascp-jstools.git" 
-       } 
+           "url": "https://hirenj@github.com/hirenj/mascp-jstools.git"
+       }
    ],
    "dependencies": {
        "xmlhttprequest": "1.0.x",
@@ -47,7 +47,7 @@
    "directories": {
        "lib": "js/lib",
        "bin": "bin",
-       "jars": "extlib/java" 
+       "jars": "extlib/java"
    },
    "private" : "true"
 }

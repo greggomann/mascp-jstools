@@ -33,12 +33,12 @@ MASCP.GelMapReader.SERVICE_URL = 'http://gelmap.de/gator2.php?';
 MASCP.GelMapReader.prototype.requestData = function()
 {
     var agi = this.agi.toUpperCase();
-    
+
     return {
         type: "GET",
         dataType: "json",
         data: { 'agi'       : agi,
-                'service'   : 'gelmap' 
+                'service'   : 'gelmap'
         }
     };
 };
@@ -73,13 +73,13 @@ MASCP.GelMapReader.Result.prototype._cleanSequence = function(sequence)
 MASCP.GelMapReader.prototype.setupSequenceRenderer = function(sequenceRenderer)
 {
     var reader = this;
-    MASCP.registerGroup('gelmap_experimental', {'fullname' : 'GelMap', 'hide_member_controllers' : true, 'hide_group_controller' : true, 'color' : '#aaaaff' });
+    MASCP.registerGroup('gelmap_experimental', {'fullname' : 'GelMap MS/MS', 'hide_member_controllers' : true, 'hide_group_controller' : true, 'color' : '#aaaaff' });
 
     var controller_name = 'gelmap_controller';
 
     var css_block = '.active .overlay { background: #ff5533; } .active a { color: #000000; text-decoration: none !important; }  :indeterminate { background: #ff0000; } .tracks .active { background: #0000ff; } .inactive a { text-decoration: none; } .inactive { display: none; }';
-    
-    MASCP.registerLayer(controller_name,{ 'fullname' : 'GelMap', 'color' : '#aaaaff', 'css' : css_block, 'hover_peptides' : true });
+
+    MASCP.registerLayer(controller_name,{ 'fullname' : 'GelMap MS/MS', 'color' : '#aaaaff', 'css' : css_block, 'hover_peptides' : true });
 
     if (sequenceRenderer.createGroupController) {
         sequenceRenderer.createGroupController('gelmap_controller','gelmap_experimental');
