@@ -137,13 +137,13 @@ MASCP.PubmedReader.prototype.setupSequenceRenderer = function(sequenceRenderer)
 
     this.bind('resultReceived', function() {
 
-        MASCP.registerGroup('pubmed', {'fullname' : 'Pubmed', 'hide_member_controllers' : true, 'hide_group_controller' : true, 'color' : '#000000' });
+        MASCP.registerGroup('pubmed', {'fullname' : 'Pubmed MS/MS', 'hide_member_controllers' : true, 'hide_group_controller' : true, 'color' : '#000000' });
 
         var overlay_name = 'pubmed_controller';
 
         var css_block = '.active .overlay { background: #000000; } .active a { color: #000000; text-decoration: none !important; }  :indeterminate { background: #ff0000; } .tracks .active { background: #0000ff; } .inactive a { text-decoration: none; } .inactive { display: none; }';
 
-        MASCP.registerLayer(overlay_name,{ 'fullname' : 'Pubmed', 'color' : '#000000', 'css' : css_block, 'hover_peptides' : true });
+        MASCP.registerLayer(overlay_name,{ 'fullname' : 'Pubmed MS/MS', 'color' : '#000000', 'css' : css_block, 'hover_peptides' : true });
 
         if (sequenceRenderer.createGroupController) {
             sequenceRenderer.createGroupController('pubmed_controller','pubmed');
